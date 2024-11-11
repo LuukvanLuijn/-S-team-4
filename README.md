@@ -1,4 +1,7 @@
 # -S-team-4
 
-Daniel
+Daniel\
 abderrahman
+Luuk\
+mohammed
+Amir
