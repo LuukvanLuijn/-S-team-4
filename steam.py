@@ -1,6 +1,9 @@
 import customtkinter as ctk
 from PIL import Image
 import time
+import os
+from steam_web_api import Steam
+import psycopg2
 
 # Configureren van de hoofdfenster
 root = ctk.CTk()
@@ -77,7 +80,6 @@ def setImages(image1_text, image2_text, image3_text, image4_text):
     image2.configure(light_image = Image.open(image2_text))
     image3.configure(light_image = Image.open(image3_text))
     image4.configure(light_image = Image.open(image4_text))
-    print("setimage")
 
 def vriendenpage():
     for widget in root.winfo_children():
@@ -102,6 +104,46 @@ def vriendenpage():
     games_friends_play_frame.pack(pady=20, fill=ctk.X)
     games_friends_play_label = ctk.CTkLabel(games_friends_play_frame, text="Welke games spelen mijn vrienden?", font=("Arial", 20), text_color="white")
     games_friends_play_label.pack(pady=50)
+
+    search_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=blue)
+    search_frame.pack(pady=20, fill=ctk.X)
+    search_label = ctk.CTkLabel(search_frame, text="Zoek naar vrienden", font=("Arial", 20), text_color="white")
+    search_label.pack(pady=50)
+
+def connect_to_database():    
+    try:        
+        conn = psycopg2.connect(            
+            dbname="steam",            
+            user="postgres",            
+            password="123Welkom123!",            
+            host="20.58.44.220",            
+            port="5432"        
+            )
+        print("connected")        
+        return conn    
+    except Exception as e:        
+        print(f"Kan geen verbinding maken met de database: {e}")        
+        return None
+connect_to_database()
+
+def get_steam_games():
+    conn = connect_to_database()
+    if conn is None:
+        return []
+    try: 
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM games ORDER BY positive_ratings DESC LIMIT 8")
+        games = cursor.fetchall()
+        conn.close()
+        return games
+    except Exception as e:
+        print(f"Kan geen games ophalen: {e}")
+        return []
+games = get_steam_games()
+if games:
+    for game in games:
+        print(game)
+get_steam_games()
 
 mainpage()
 root.mainloop()
