@@ -1,19 +1,69 @@
 import customtkinter as ctk
 from PIL import Image
-import time
-import os
-from steam_web_api import Steam
+import requests
+from io import BytesIO
 import psycopg2
 
 # Configureren van de hoofdfenster
 root = ctk.CTk()
 root.geometry("900x700")  # Vergroot de breedte van het hoofdfenster
 root.title("Gaming Interface")
-root.resizable(False,False)
-image1 = ctk.CTkImage(Image.open("eldenstink.png"), size=(180, 180))
-image2 = ctk.CTkImage(Image.open("eldenstink.png"), size=(180, 180))
-image3 = ctk.CTkImage(Image.open("eldenstink.png"), size=(180, 180))
-image4 = ctk.CTkImage(Image.open("eldenstink.png"), size=(180, 180))
+root.resizable(False, False)
+
+list_urls = []
+
+def imagegrabber(url):
+    response = requests.get(url)
+    imagedata = response.content
+    return Image.open(BytesIO(imagedata))
+
+def connect_to_database():    
+    try:        
+        conn = psycopg2.connect(            
+            dbname="steam",            
+            user="postgres",            
+            password="123Welkom123!",              
+            host="20.58.44.220",            
+            port="5432"        
+        )
+        print("connected")        
+        return conn    
+    except Exception as e:        
+        print(f"Kan geen verbinding maken met de database: {e}")        
+        return None
+
+def get_steam_games():
+    conn = connect_to_database()
+    if conn is None:
+        return []
+    try: 
+        cursor = conn.cursor()
+        cursor.execute("SELECT appid FROM games ORDER BY positive_ratings DESC LIMIT 8")
+        games = cursor.fetchall()
+        conn.close()
+        return games
+    except Exception as e:
+        print(f"Kan geen games ophalen: {e}")
+        return []
+
+def getimages(id):
+    url = f"https://store.steampowered.com/api/appdetails?appids={id}"
+    response = requests.get(url)
+    data = response.json()
+    if data[str(id)]['success'] and data[str(id)]['data']:
+        image = data[str(id)]['data']['header_image']
+        print(f"Image URL: {image}")
+        return image
+    else:
+        print("Game not found or API request failed.")
+        return None
+
+games = get_steam_games()
+if games:
+    for game in games:
+        image_url = getimages(game[0])
+        if image_url:
+            list_urls.append(image_url)
 
 def mainpage():
     for widget in root.winfo_children():
@@ -30,23 +80,28 @@ def mainpage():
 
     games_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=steam_blue)
     games_frame.pack(pady=20, fill=ctk.X)
-    games_label = ctk.CTkLabel(games_frame, text="'Games'", font=("Arial", 20), text_color="white")
+    games_label = ctk.CTkLabel(games_frame, text="Games", font=("bold", 40), text_color="white")
     games_label.pack(pady=10)
 
     right_label = ctk.CTkButton(games_frame, fg_color=button_blue, text=">", text_color="white", width=20, command=rechts)
-    right_label.pack(side=ctk.RIGHT, padx=5)
+    right_label.pack(side=ctk.RIGHT, padx=(5, 5))
     left_label = ctk.CTkButton(games_frame, fg_color=button_blue, text="<", text_color="white", width=20, command=links)
-    left_label.pack(side=ctk.LEFT, padx=(5, 25))
+    left_label.pack(side=ctk.LEFT, padx=(5, 5))
 
     global image1, image2, image3, image4
+    image1 = ctk.CTkImage(imagegrabber(list_urls[0]), size=(207, 97))
+    image2 = ctk.CTkImage(imagegrabber(list_urls[1]), size=(207, 97))
+    image3 = ctk.CTkImage(imagegrabber(list_urls[2]), size=(207, 97))
+    image4 = ctk.CTkImage(imagegrabber(list_urls[3]), size=(207, 97))
+
     label1 = ctk.CTkLabel(games_frame, image=image1)
-    label1.pack(side=ctk.LEFT, padx=(30, 2), pady=10)
+    label1.pack(side=ctk.LEFT, padx=(0, 2), pady=10)
     label2 = ctk.CTkLabel(games_frame, image=image2)
     label2.pack(side=ctk.LEFT, padx=2, pady=10)
     label3 = ctk.CTkLabel(games_frame, image=image3)
-    label3.pack(side=ctk.LEFT, padx=2, pady=10)
+    label3.pack(side=ctk.LEFT , padx=2, pady=10)
     label4 = ctk.CTkLabel(games_frame, image=image4)
-    label4.pack(side=ctk.LEFT, padx=(2, 30), pady=10)
+    label4.pack(side=ctk.LEFT, padx=(2, 0), pady=10)
 
     bottom_frame = ctk.CTkFrame(root)
     bottom_frame.pack(pady=(10, 20), fill=ctk.X)
@@ -69,17 +124,19 @@ def mainpage():
     recommendation_label.pack(pady=20)
 
 def links():
-    setImages("eldenstink.png", "eldenstink.png", "eldenstink.png", "eldenstink.png")
+    print("links\n\n\n")
+    setImages(list_urls[0], list_urls[1], list_urls[2], list_urls[3])
 
 def rechts():
-    setImages("minecraft.png","minecraft.png","minecraft.png","minecraft.png")
+    print("rechts\n\n\n")
+    setImages(list_urls[4], list_urls[5], list_urls[6], list_urls[7])
 
 def setImages(image1_text, image2_text, image3_text, image4_text):
     global image1, image2, image3, image4
-    image1.configure(light_image = Image.open(image1_text))
-    image2.configure(light_image = Image.open(image2_text))
-    image3.configure(light_image = Image.open(image3_text))
-    image4.configure(light_image = Image.open(image4_text))
+    image1.configure(light_image=imagegrabber(image1_text).resize((180, 180)))
+    image2.configure(light_image=imagegrabber(image2_text).resize((180, 180)))
+    image3.configure(light_image=imagegrabber(image3_text).resize((180, 180)))
+    image4.configure(light_image=imagegrabber(image4_text).resize((180, 180)))
 
 def vriendenpage():
     for widget in root.winfo_children():
@@ -109,41 +166,6 @@ def vriendenpage():
     search_frame.pack(pady=20, fill=ctk.X)
     search_label = ctk.CTkLabel(search_frame, text="Zoek naar vrienden", font=("Arial", 20), text_color="white")
     search_label.pack(pady=50)
-
-def connect_to_database():    
-    try:        
-        conn = psycopg2.connect(            
-            dbname="steam",            
-            user="postgres",            
-            password="123Welkom123!",            
-            host="20.58.44.220",            
-            port="5432"        
-            )
-        print("connected")        
-        return conn    
-    except Exception as e:        
-        print(f"Kan geen verbinding maken met de database: {e}")        
-        return None
-connect_to_database()
-
-def get_steam_games():
-    conn = connect_to_database()
-    if conn is None:
-        return []
-    try: 
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM games ORDER BY positive_ratings DESC LIMIT 8")
-        games = cursor.fetchall()
-        conn.close()
-        return games
-    except Exception as e:
-        print(f"Kan geen games ophalen: {e}")
-        return []
-games = get_steam_games()
-if games:
-    for game in games:
-        print(game)
-get_steam_games()
 
 mainpage()
 root.mainloop()
