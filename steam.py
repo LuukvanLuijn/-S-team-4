@@ -1,14 +1,15 @@
 import customtkinter as ctk
+import requests, psycopg2, webbrowser
 from PIL import Image
-import requests
 from io import BytesIO
-import psycopg2
 
-# Configureren van de hoofdfenster
 root = ctk.CTk()
-root.geometry("900x700")  # Vergroot de breedte van het hoofdfenster
-root.title("Gaming Interface")
+root.geometry("900x700")  
+root.title("Steam")
 root.resizable(False, False)
+
+steam_blue = "#1b252e"
+button_blue = "#008cff"
 
 list_urls = []
 
@@ -52,7 +53,6 @@ def getimages(id):
     data = response.json()
     if data[str(id)]['success'] and data[str(id)]['data']:
         image = data[str(id)]['data']['header_image']
-        print(f"Image URL: {image}")
         return image
     else:
         print("Game not found or API request failed.")
@@ -65,18 +65,24 @@ if games:
         if image_url:
             list_urls.append(image_url)
 
+def donation_button():
+    webbrowser.open("https://youtu.be/2qBlE2-WL60?si=JZrCRFcBnvAnJHt3")
+
 def mainpage():
     for widget in root.winfo_children():
         widget.destroy()
-    steam_blue = "#1b252e"
-    button_blue = "#008cff"
 
     top_frame = ctk.CTkFrame(root, width=900, height=50, fg_color=steam_blue)
     top_frame.pack(side=ctk.TOP, fill=ctk.X, pady=(20, 0))
     steam_label = ctk.CTkLabel(top_frame, text="Steam", text_color="white")
     steam_label.pack(side=ctk.LEFT, padx=20, pady=10)
     vrienden_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="Vrienden", text_color="white", command=vriendenpage)
-    vrienden_label.pack(side=ctk.RIGHT, padx=20, pady=10)
+    vrienden_label.pack(side=ctk.RIGHT, padx=(5, 20), pady=10)
+    donation_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="Doneer", text_color="white", command=donation_button)
+    donation_label.pack(side=ctk.RIGHT, padx=2, pady=10)
+    stats_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="%",font=("arial", 20), text_color="white", width=30, height=30, command=statistics_page)
+    stats_label.pack(side=ctk.RIGHT, padx=2, pady=10)
+    
 
     games_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=steam_blue)
     games_frame.pack(pady=20, fill=ctk.X)
@@ -141,31 +147,50 @@ def setImages(image1_text, image2_text, image3_text, image4_text):
 def vriendenpage():
     for widget in root.winfo_children():
         widget.destroy()
-    
-    blue = "#1b252e"
-    button_blue = "#008cff"
 
-    top_frame = ctk.CTkFrame(root, width=900, height=50, fg_color=blue)
+    top_frame = ctk.CTkFrame(root, width=900, height=50, fg_color=steam_blue)
     top_frame.pack(side=ctk.TOP, fill=ctk.X, pady=(20, 0))
     terug_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="Terug", text_color="white", command=mainpage)
     terug_label.pack(side=ctk.LEFT, padx=20, pady=10)
     vrienden_label = ctk.CTkLabel(top_frame, text="Vrienden", text_color="white")
     vrienden_label.pack(side=ctk.RIGHT, padx=60, pady=10)
 
-    friends_online_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=blue)
+    friends_online_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=steam_blue)
     friends_online_frame.pack(pady=20, fill=ctk.X)
     friends_online_label = ctk.CTkLabel(friends_online_frame, text="Wanneer zijn jouw vrienden online?", font=("Arial", 20), text_color="white")
     friends_online_label.pack(pady=50)
 
-    games_friends_play_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=blue)
+    games_friends_play_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=steam_blue)
     games_friends_play_frame.pack(pady=20, fill=ctk.X)
     games_friends_play_label = ctk.CTkLabel(games_friends_play_frame, text="Welke games spelen mijn vrienden?", font=("Arial", 20), text_color="white")
     games_friends_play_label.pack(pady=50)
 
-    search_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=blue)
+    search_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=steam_blue)
     search_frame.pack(pady=20, fill=ctk.X)
     search_label = ctk.CTkLabel(search_frame, text="Zoek naar vrienden", font=("Arial", 20), text_color="white")
     search_label.pack(pady=50)
+
+def statistics_page():
+    for widget in root.winfo_children():
+        widget.destroy()
+    
+    # Frame for statistics
+    stats_frame = ctk.CTkFrame(root, fg_color=steam_blue)
+    stats_frame.pack(pady=20, fill=ctk.X)
+    
+    # Example statistic: Total games analyzed
+    total_games = len(games)
+    total_games_label = ctk.CTkLabel(stats_frame, text=f"Totaal aantal geanalyseerde games: {total_games}", text_color="white")
+    total_games_label.pack(pady=10)
+    
+    # Add more statistics as needed
+    # e.g., Average ratings, most played genres, etc.
+    
+    back_button = ctk.CTkButton(stats_frame, text="Terug", command=mainpage)
+    back_button.pack(pady=10)
+
+    
+    
 
 mainpage()
 root.mainloop()
