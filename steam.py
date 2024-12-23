@@ -1,17 +1,21 @@
 import customtkinter as ctk
-import requests, psycopg2, webbrowser
+import requests, psycopg2, webbrowser, _json, random
 from PIL import Image
 from io import BytesIO
-
+title_variations = ["Are You Winning?","Level Up Your Game","The Npc's Are Waiting For U", "Unlock New Worlds", "Try Terraria", "Game On", "Let's Play Together", "Get Ready To Play", "Dive Into Action", "Connect With Friends", "Ready Up", "Play, Share, Connect", "Where Gamers Unite", "Just For Fun", "Chill And Play", "Game Time", "Let's Have Some Fun", "Your Next Challenge Awaits", "Rise To The Challenge", "Play Hard, Win Big", "Achieve Your Goals", "The Game Is On", "Discover New Adventures", "Explore The Unknown", "Uncover Hidden Gems", "Your Journey Awaits"]
 root = ctk.CTk()
 root.geometry("900x700")  
-root.title("Steam")
+root.title(f"STEAM: {random.choice(title_variations)}")
 root.resizable(False, False)
 
 steam_blue = "#1b252e"
 button_blue = "#008cff"
 
 list_urls = []
+avatar = None
+global naam
+global friends
+friends = []
 
 def imagegrabber(url):
     response = requests.get(url)
@@ -46,6 +50,36 @@ def get_steam_games():
     except Exception as e:
         print(f"Kan geen games ophalen: {e}")
         return []
+    
+def get_most_played_games():
+    conn = connect_to_database()
+    if conn is None:
+        return []
+    try: 
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM games ORDER BY average_playtime DESC LIMIT 10")  # Adjust the query as needed
+        most_played_games = cursor.fetchall()
+        conn.close()
+        return most_played_games
+    except Exception as e:
+        print(f"Kan geen meest gespeelde games ophalen: {e}")
+        return []
+most_played_games = get_most_played_games()
+
+def get_steam_news():
+    # Fetch news from the Steam API
+    try:
+        url = "https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid=440&count=5&maxlength=300&format=json"
+        response = requests.get(url)
+        data = response.json()
+        if data['appnews']['newsitems']:
+            return data['appnews']['newsitems']
+        else:
+            print("No news items found.")
+            return []
+    except Exception as e:
+        print(f"Error fetching news: {e}")
+        return []
 
 def getimages(id):
     url = f"https://store.steampowered.com/api/appdetails?appids={id}"
@@ -55,6 +89,7 @@ def getimages(id):
         image = data[str(id)]['data']['header_image']
         return image
     else:
+        print(data)
         print("Game not found or API request failed.")
         return None
 
@@ -66,7 +101,7 @@ if games:
             list_urls.append(image_url)
 
 def donation_button():
-    webbrowser.open("https://youtu.be/2qBlE2-WL60?si=JZrCRFcBnvAnJHt3")
+    webbrowser.open("https://www.armoedefonds.nl/")
 
 def mainpage():
     for widget in root.winfo_children():
@@ -74,7 +109,7 @@ def mainpage():
 
     top_frame = ctk.CTkFrame(root, width=900, height=50, fg_color=steam_blue)
     top_frame.pack(side=ctk.TOP, fill=ctk.X, pady=(20, 0))
-    steam_label = ctk.CTkLabel(top_frame, text="Steam", text_color="white")
+    steam_label = ctk.CTkLabel(top_frame, text="Steam", text_color="white", font=("bold", 30))
     steam_label.pack(side=ctk.LEFT, padx=20, pady=10)
     vrienden_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="Vrienden", text_color="white", command=vriendenpage)
     vrienden_label.pack(side=ctk.RIGHT, padx=(5, 20), pady=10)
@@ -100,13 +135,13 @@ def mainpage():
     image3 = ctk.CTkImage(imagegrabber(list_urls[2]), size=(207, 97))
     image4 = ctk.CTkImage(imagegrabber(list_urls[3]), size=(207, 97))
 
-    label1 = ctk.CTkLabel(games_frame, image=image1)
+    label1 = ctk.CTkLabel(games_frame, image=image1, text="")
     label1.pack(side=ctk.LEFT, padx=(0, 2), pady=10)
-    label2 = ctk.CTkLabel(games_frame, image=image2)
+    label2 = ctk.CTkLabel(games_frame, image=image2, text="")
     label2.pack(side=ctk.LEFT, padx=2, pady=10)
-    label3 = ctk.CTkLabel(games_frame, image=image3)
+    label3 = ctk.CTkLabel(games_frame, image=image3, text="")
     label3.pack(side=ctk.LEFT , padx=2, pady=10)
-    label4 = ctk.CTkLabel(games_frame, image=image4)
+    label4 = ctk.CTkLabel(games_frame, image=image4, text="")
     label4.pack(side=ctk.LEFT, padx=(2, 0), pady=10)
 
     bottom_frame = ctk.CTkFrame(root)
@@ -115,26 +150,36 @@ def mainpage():
     left_frame = ctk.CTkFrame(bottom_frame, fg_color=steam_blue, width=425, height=200)
     left_frame.pack(side=ctk.LEFT, fill=ctk.BOTH, expand=True, padx=(10, 5))
     left_frame.pack_propagate(0)  # Houd de afmetingen vast
-    planned_label = ctk.CTkLabel(left_frame, text="Wanneer heb je gepland om te gaan spelen? (dd/mm)", text_color="white", anchor="w")
-    planned_label.pack(pady=10, padx=10, anchor="w")
+    news_items = get_steam_news()
+    news_label = ctk.CTkLabel(left_frame, text="Steam News", text_color="white",font=("bold", 20), anchor="w")
+    news_label.pack(pady=10, padx=10, anchor="w")
 
-    right_frame = ctk.CTkFrame(bottom_frame, fg_color=steam_blue, width=425, height=200)
+    for item in news_items:
+        if isinstance(item, dict):
+            title = item.get('title', 'No Title')
+            news_url = item.get('url', None)  # Assuming 'url' key exists
+
+            # Create a clickable label for the news title
+            news_item_label = ctk.CTkButton(left_frame, text=title, text_color="white", command=lambda url=news_url: webbrowser.open(url))
+            news_item_label.pack(pady=2, padx=10, anchor="w")
+
+        else:
+            print("Unexpected item format:", item)
+
+    right_frame = ctk.CTkFrame(bottom_frame, fg_color=steam_blue, width=425, height=400)
     right_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True, padx=(5, 10))
     right_frame.pack_propagate(0)  # Houd de afmetingen vast
-    most_played_label = ctk.CTkLabel(right_frame, text="Welke spellen worden het meest gespeeld?", text_color="white", anchor="w")
+    most_played_label = ctk.CTkLabel(right_frame, text="meest gespeelde spellen", text_color="white", font=("bold", 20))
     most_played_label.pack(pady=10, padx=10, anchor="w")
 
-    recommendation_frame = ctk.CTkFrame(root, fg_color=steam_blue, height=100)
-    recommendation_frame.pack(pady=(0, 20), fill=ctk.X)
-    recommendation_label = ctk.CTkLabel(recommendation_frame, text="Welke aanbevelingen kunnen er gemaakt worden om te spelen?", font=("Arial", 15), text_color="white")
-    recommendation_label.pack(pady=20)
+    for game in most_played_games:
+        most_played_label = ctk.CTkLabel(right_frame, text=game[0], text_color="white")
+        most_played_label.pack(pady=2, padx = "10", anchor="w")
 
 def links():
-    print("links\n\n\n")
     setImages(list_urls[0], list_urls[1], list_urls[2], list_urls[3])
 
 def rechts():
-    print("rechts\n\n\n")
     setImages(list_urls[4], list_urls[5], list_urls[6], list_urls[7])
 
 def setImages(image1_text, image2_text, image3_text, image4_text):
@@ -154,43 +199,102 @@ def vriendenpage():
     terug_label.pack(side=ctk.LEFT, padx=20, pady=10)
     vrienden_label = ctk.CTkLabel(top_frame, text="Vrienden", text_color="white")
     vrienden_label.pack(side=ctk.RIGHT, padx=60, pady=10)
+    while True:
+        if avatar != None:
+            avatarimg = ctk.CTkImage(imagegrabber(avatar), size=(184, 184))
+        else: avatarimg = ctk.CTkImage(imagegrabber("https://static.thenounproject.com/png/4595376-200.png"), size=(184, 184))
+        break
+    login_frame = ctk.CTkFrame(root, width=850, height=150, fg_color=steam_blue)
+    login_frame.pack(pady=20, fill=ctk.X)
+    login_label = ctk.CTkLabel(login_frame, text="Voer je SteamID/Vanity in.", font=("Arial", 20), text_color="white")
+    login_label.pack(pady=10)
+    username_entry = ctk.CTkEntry(login_frame, width=300, font=("Arial", 20), text_color="black")
+    username_entry.pack(pady=10)
 
-    friends_online_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=steam_blue)
-    friends_online_frame.pack(pady=20, fill=ctk.X)
-    friends_online_label = ctk.CTkLabel(friends_online_frame, text="Wanneer zijn jouw vrienden online?", font=("Arial", 20), text_color="white")
-    friends_online_label.pack(pady=50)
+    print(avatar)
+    def loginuser():
+        vanity_url = username_entry.get()
+        if vanity_url:
+            # Check if the input is a numeric ID
+            if vanity_url.isdigit():
+                # If it's a numeric ID, use it directly
+                steam_id = vanity_url
+                print(f"Using numeric Steam ID: {steam_id}")
+            else:
+                # If it's not numeric, treat it as a vanity URL
+                api_url = f"https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?key=4BD36C0BE91A8BD89F7A8B730DC93ADC&vanityurl={vanity_url}"
+                response = requests.get(api_url)
+                
+                # Print the raw response text for debugging
+                print(f"Response for vanity URL '{vanity_url}': {response.text}")
+                
+                # Check if the response status code is OK
+                if response.status_code != 200:
+                    print(f"Error: Received status code {response.status_code} for vanity URL '{vanity_url}'")
+                    return
+                
+                # Try to parse the JSON response
+                try:
+                    data = response.json()
+                except ValueError:
+                    print("Response is not valid JSON:", response.text)
+                    return
+                
+                # Check if the response indicates success
+                if data['response']['success'] == 1:
+                    steam_id = data['response']['steamid']
+                    print(f"Logged in with Steam ID: {steam_id}")
+                else:
+                    print("Failed to log in. Invalid username.")
+                    return
+            
+            apiResponseplayer = requests.get(f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=4BD36C0BE91A8BD89F7A8B730DC93ADC&steamids={steam_id}")
+            apiResponsefriends = requests.get(f"http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=4BD36C0BE91A8BD89F7A8B730DC93ADC&steamid={steam_id}&relationship=friend")
+            dataplayer = apiResponseplayer.json()
+            datafriends = apiResponsefriends.json()
+            global avatar, naam, friends_usernames, friends
+            avatar = dataplayer['response']['players'][0]['avatarfull']
+            naam = dataplayer['response']['players'][0]['personaname']
+            if 'friendslist' in datafriends and 'friends' in datafriends['friendslist']:
+                friends = [friend['steamid'] for friend in datafriends['friendslist']['friends']]
+            friends_usernames = []
 
-    games_friends_play_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=steam_blue)
-    games_friends_play_frame.pack(pady=20, fill=ctk.X)
-    games_friends_play_label = ctk.CTkLabel(games_friends_play_frame, text="Welke games spelen mijn vrienden?", font=("Arial", 20), text_color="white")
-    games_friends_play_label.pack(pady=50)
-
-    search_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=steam_blue)
-    search_frame.pack(pady=20, fill=ctk.X)
-    search_label = ctk.CTkLabel(search_frame, text="Zoek naar vrienden", font=("Arial", 20), text_color="white")
-    search_label.pack(pady=50)
+            for friend in friends[:7]:
+                friend_summary_response = requests.get(f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=4BD36C0BE91A8BD89F7A8B730DC93ADC&steamids={friend}")
+                friend_data = friend_summary_response.json()
+                if friend_data['response']['players']:
+                    friend_username = friend_data['response']['players'][0]['personaname']
+                    friends_usernames.append(friend_username)
+            print(f"logged in as: {naam}")
+            vriendenpage()
+        else:
+            print("Please enter a username.")
+    login_image = ctk.CTkImage(imagegrabber("https://community.fastly.steamstatic.com/public/images/signinthroughsteam/sits_01.png"), size=(180, 35))
+    login_button = ctk.CTkButton(login_frame, text="", image=login_image, text_color="white", command=loginuser, fg_color=steam_blue)
+    login_button.pack(pady=10)
+    profile_frame = ctk.CTkFrame(root, width=450, height=150, fg_color=steam_blue)
+    profile_frame.pack(side=ctk.LEFT, fill=ctk.BOTH, expand=True, pady=20, padx=10)
+    avatar_label = ctk.CTkLabel(profile_frame, image=avatarimg, text="")
+    avatar_label.pack(side=ctk.LEFT,pady=10, padx=10)
+    name = ctk.CTkLabel(profile_frame, text=naam, font=("Arial", 30), text_color="white")
+    name.pack(side=ctk.LEFT, pady=10, padx=(10, 0))
+    friends_frame = ctk.CTkFrame(root, width=850, height=150, fg_color=steam_blue)
+    friends_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True, pady=20, padx=10)
+    friends_label = ctk.CTkLabel(friends_frame, text="Vrienden(top 7)", font=("Arial", 20), text_color="white")
+    friends_label.pack(pady=10)
+    if friends_usernames:
+        for friend in friends_usernames:
+            friends_label = ctk.CTkLabel(friends_frame, text=friend, text_color="white")
+            friends_label.pack(pady=10)
+    else:
+        lonely_label = ctk.CTkLabel(friends_frame, text="je hebt geen vrienden of", text_color="white", font=("Arial", 20))
+        lonely_label2 = ctk.CTkLabel(friends_frame, text="je moet je friendlist op public zetten", text_color="white", font=("Arial", 20))
+        lonely_label.pack(pady=(10, 0))
+        lonely_label2.pack(pady=2)
 
 def statistics_page():
-    for widget in root.winfo_children():
-        widget.destroy()
-    
-    # Frame for statistics
-    stats_frame = ctk.CTkFrame(root, fg_color=steam_blue)
-    stats_frame.pack(pady=20, fill=ctk.X)
-    
-    # Example statistic: Total games analyzed
-    total_games = len(games)
-    total_games_label = ctk.CTkLabel(stats_frame, text=f"Totaal aantal geanalyseerde games: {total_games}", text_color="white")
-    total_games_label.pack(pady=10)
-    
-    # Add more statistics as needed
-    # e.g., Average ratings, most played genres, etc.
-    
-    back_button = ctk.CTkButton(stats_frame, text="Terug", command=mainpage)
-    back_button.pack(pady=10)
-
-    
-    
+#AI
+    pass
 
 mainpage()
 root.mainloop()
