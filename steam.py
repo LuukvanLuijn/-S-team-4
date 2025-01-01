@@ -43,7 +43,7 @@ def get_steam_games():
         return []
     try: 
         cursor = conn.cursor()
-        cursor.execute("SELECT appid FROM games ORDER BY positive_ratings DESC LIMIT 8")
+        cursor.execute("SELECT appid FROM games ORDER BY positive_ratings DESC LIMIT 20")
         games = cursor.fetchall()
         conn.close()
         return games
@@ -57,7 +57,7 @@ def get_most_played_games():
         return []
     try: 
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM games ORDER BY average_playtime DESC LIMIT 10")  # Adjust the query as needed
+        cursor.execute("SELECT name FROM games ORDER BY average_playtime DESC LIMIT 20")  # Adjust the query as needed
         most_played_games = cursor.fetchall()
         conn.close()
         return most_played_games
@@ -67,19 +67,32 @@ def get_most_played_games():
 most_played_games = get_most_played_games()
 
 def get_steam_news():
-    # Fetch news from the Steam API
-    try:
-        url = "https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid=440&count=5&maxlength=300&format=json"
-        response = requests.get(url)
-        data = response.json()
-        if data['appnews']['newsitems']:
-            return data['appnews']['newsitems']
-        else:
-            print("No news items found.")
-            return []
-    except Exception as e:
-        print(f"Error fetching news: {e}")
-        return []
+    all_games = get_steam_games()
+    all_news = []
+    
+    for game_id in all_games:
+        game_id = game_id[0]
+        try:
+            url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={game_id}&count=5&maxlength=300&format=json"
+            response = requests.get(url)
+            print(f"Fetching news for game ID {game_id}: {response.status_code}")  # Debugging line
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Check if 'appnews' key exists in the response
+                if 'appnews' in data and 'newsitems' in data['appnews']:
+                    if data['appnews']['newsitems']:
+                        all_news.extend(data['appnews']['newsitems'])  # Add news items to the list
+                    else:
+                        print(f"No news items found for game ID {game_id}.")
+                else:
+                    print(f"'appnews' key not found in response for game ID {game_id}. Response: {data}")
+            else:
+                print(f"Failed to fetch news for game ID {game_id}: {response.text}")
+        except Exception as e:
+            print(f"Error fetching news for game ID {game_id}: {e}")
+    
+    return all_news
 
 def getimages(id):
     url = f"https://store.steampowered.com/api/appdetails?appids={id}"
@@ -147,9 +160,8 @@ def mainpage():
     bottom_frame = ctk.CTkFrame(root)
     bottom_frame.pack(pady=(10, 20), fill=ctk.X)
 
-    left_frame = ctk.CTkFrame(bottom_frame, fg_color=steam_blue, width=425, height=200)
+    left_frame = ctk.CTkScrollableFrame(bottom_frame, fg_color=steam_blue, width=425, height=200, label_text="Steam News", label_font=("bold", 20))
     left_frame.pack(side=ctk.LEFT, fill=ctk.BOTH, expand=True, padx=(10, 5))
-    left_frame.pack_propagate(0)  # Houd de afmetingen vast
     news_items = get_steam_news()
     news_label = ctk.CTkLabel(left_frame, text="Steam News", text_color="white",font=("bold", 20), anchor="w")
     news_label.pack(pady=10, padx=10, anchor="w")
@@ -166,11 +178,8 @@ def mainpage():
         else:
             print("Unexpected item format:", item)
 
-    right_frame = ctk.CTkFrame(bottom_frame, fg_color=steam_blue, width=425, height=400)
+    right_frame = ctk.CTkScrollableFrame(bottom_frame, fg_color=steam_blue, width=425, height=400, label_text="Meest gespeelde spellen", label_font=("bold", 20))
     right_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True, padx=(5, 10))
-    right_frame.pack_propagate(0)  # Houd de afmetingen vast
-    most_played_label = ctk.CTkLabel(right_frame, text="meest gespeelde spellen", text_color="white", font=("bold", 20))
-    most_played_label.pack(pady=10, padx=10, anchor="w")
 
     for game in most_played_games:
         most_played_label = ctk.CTkLabel(right_frame, text=game[0], text_color="white")
@@ -259,7 +268,7 @@ def vriendenpage():
                 friends = [friend['steamid'] for friend in datafriends['friendslist']['friends']]
             friends_usernames = []
 
-            for friend in friends[:7]:
+            for friend in friends:
                 friend_summary_response = requests.get(f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=4BD36C0BE91A8BD89F7A8B730DC93ADC&steamids={friend}")
                 friend_data = friend_summary_response.json()
                 if friend_data['response']['players']:
@@ -273,18 +282,18 @@ def vriendenpage():
     login_button = ctk.CTkButton(login_frame, text="", image=login_image, text_color="white", command=loginuser, fg_color=steam_blue)
     login_button.pack(pady=10)
     profile_frame = ctk.CTkFrame(root, width=450, height=150, fg_color=steam_blue)
-    profile_frame.pack(side=ctk.LEFT, fill=ctk.BOTH, expand=True, pady=20, padx=10)
+    profile_frame.pack(side=ctk.LEFT, fill=ctk.BOTH, expand=True, pady=20, padx=(10,5))
     avatar_label = ctk.CTkLabel(profile_frame, image=avatarimg, text="")
     avatar_label.pack(side=ctk.LEFT,pady=10, padx=10)
     name = ctk.CTkLabel(profile_frame, text=naam, font=("Arial", 30), text_color="white")
     name.pack(side=ctk.LEFT, pady=10, padx=(10, 0))
-    friends_frame = ctk.CTkFrame(root, width=850, height=150, fg_color=steam_blue)
+    friends_frame = ctk.CTkScrollableFrame(root, width=450, height=150, fg_color=steam_blue)
     friends_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True, pady=20, padx=10)
-    friends_label = ctk.CTkLabel(friends_frame, text="Vrienden(top 7)", font=("Arial", 20), text_color="white")
-    friends_label.pack(pady=10)
+    friends_label = ctk.CTkLabel(friends_frame, text="Vrienden", font=("Arial", 20), text_color="white")
+    friends_label.pack(pady=10, padx=(5,10))
     if friends_usernames:
         for friend in friends_usernames:
-            friends_label = ctk.CTkLabel(friends_frame, text=friend, text_color="white")
+            friends_label = ctk.CTkLabel(friends_frame, text=friend, text_color="white", font = ("bold", 25))
             friends_label.pack(pady=10)
     else:
         lonely_label = ctk.CTkLabel(friends_frame, text="je hebt geen vrienden of", text_color="white", font=("Arial", 20))
