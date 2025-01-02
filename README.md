@@ -1,9 +1,9 @@
 # -S-team-4
 
 Daniel\
-abderrahman
+abderrahman\
 Luuk\
-mohammed
+mohammed is er ook\
 Amir
 
 ---
@@ -61,7 +61,7 @@ Jullie team fungeert als startup en is verantwoordelijk voor:
 
 ## Technologieën en Structuur
 
-- **Frontend**: Tkinter
+- **Frontend**: CustomTkinter
 - **Backend**: Python
 - **Database**: PostgreSQL in de Azure Cloud
 - **Hardware**: Raspberry Pi Pico W, Neopixel, Afstandssensor
