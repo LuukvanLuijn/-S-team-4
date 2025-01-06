@@ -94,4 +94,4 @@ class SteamData:
             print()
 
 steam_data = SteamData()
-steam_data.print_statistieken()
+
