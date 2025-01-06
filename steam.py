@@ -130,16 +130,13 @@ def mainpage():
     vrienden_label.pack(side=ctk.RIGHT, padx=(5, 20), pady=10)
     donation_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="Doneer", text_color="white", command=donation_button)
     donation_label.pack(side=ctk.RIGHT, padx=2, pady=10)
-    
-    # Add the original stats button
-    stats_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="%", font=("arial", 20), text_color="white", width=30, height=30, command=ai_statistics_page)
+    stats_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="%",font=("arial", 20), text_color="white", width=30, height=30)
     stats_label.pack(side=ctk.RIGHT, padx=2, pady=10)
     
     # Add the new AI stats button
     ai_stats_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="AI", font=("arial", 20), text_color="white", width=30, height=30, command=ai_statistics_page)
     ai_stats_label.pack(side=ctk.RIGHT, padx=2, pady=10)
 
-    # Rest of the mainpage function remains the same
     games_frame = ctk.CTkFrame(root, width=850, height=200, fg_color=steam_blue)
     games_frame.pack(pady=20, fill=ctk.X)
     games_label = ctk.CTkLabel(games_frame, text="Games", font=("bold", 40), text_color="white")
@@ -161,7 +158,7 @@ def mainpage():
     label2 = ctk.CTkLabel(games_frame, image=image2, text="")
     label2.pack(side=ctk.LEFT, padx=2, pady=10)
     label3 = ctk.CTkLabel(games_frame, image=image3, text="")
-    label3.pack(side=ctk.LEFT, padx=2, pady=10)
+    label3.pack(side=ctk.LEFT , padx=2, pady=10)
     label4 = ctk.CTkLabel(games_frame, image=image4, text="")
     label4.pack(side=ctk.LEFT, padx=(2, 0), pady=10)
 
@@ -171,15 +168,18 @@ def mainpage():
     left_frame = ctk.CTkScrollableFrame(bottom_frame, fg_color=steam_blue, width=425, height=200, label_text="Steam News", label_font=("bold", 20))
     left_frame.pack(side=ctk.LEFT, fill=ctk.BOTH, expand=True, padx=(10, 5))
     news_items = get_steam_news()
-    news_label = ctk.CTkLabel(left_frame, text="Steam News", text_color="white", font=("bold", 20), anchor="w")
+    news_label = ctk.CTkLabel(left_frame, text="Steam News", text_color="white",font=("bold", 20), anchor="w")
     news_label.pack(pady=10, padx=10, anchor="w")
 
     for item in news_items:
         if isinstance(item, dict):
             title = item.get('title', 'No Title')
-            news_url = item.get('url', None)
+            news_url = item.get('url', None)  # Assuming 'url' key exists
+
+            # Create a clickable label for the news title
             news_item_label = ctk.CTkButton(left_frame, text=title, text_color="white", command=lambda url=news_url: webbrowser.open(url))
             news_item_label.pack(pady=2, padx=10, anchor="w")
+
         else:
             print("Unexpected item format:", item)
 
@@ -188,7 +188,7 @@ def mainpage():
 
     for game in most_played_games:
         most_played_label = ctk.CTkLabel(right_frame, text=game[0], text_color="white")
-        most_played_label.pack(pady=2, padx="10", anchor="w")
+        most_played_label.pack(pady=2, padx = "10", anchor="w")
 
 def links():
     setImages(list_urls[0], list_urls[1], list_urls[2], list_urls[3])
@@ -310,123 +310,36 @@ def ai_statistics_page():
     for widget in root.winfo_children():
         widget.destroy()
 
-    # Top frame with navigation
+    # Top frame met navigatie
     top_frame = ctk.CTkFrame(root, width=900, height=50, fg_color=steam_blue)
     top_frame.pack(side=ctk.TOP, fill=ctk.X, pady=(20, 0))
     
     terug_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="Terug", text_color="white", command=mainpage)
     terug_label.pack(side=ctk.LEFT, padx=20, pady=10)
     
-    stats_label = ctk.CTkLabel(top_frame, text="AI Statistics", text_color="white", font=("bold", 30))
+    stats_label = ctk.CTkLabel(top_frame, text="Voorspellende Statistieken (AI)", text_color="white", font=("bold", 30))
     stats_label.pack(side=ctk.RIGHT, padx=60, pady=10)
 
-    # Frame for statistics type selection
-    selection_frame = ctk.CTkFrame(root, width=850, height=100, fg_color=steam_blue)
-    selection_frame.pack(pady=20, fill=ctk.X)
-
-    # Create a container frame for the statistics content
-    content_frame = ctk.CTkFrame(root, width=850, height=400, fg_color=steam_blue)
+    # Frame voor voorspellende statistieken
+    content_frame = ctk.CTkFrame(root, width=850, height=600, fg_color=steam_blue)
     content_frame.pack(pady=20, fill=ctk.BOTH, expand=True)
 
-    def show_descriptive_stats():
-        # Clear previous content
-        for widget in content_frame.winfo_children():
-            widget.destroy()
+    # Creëer een scrollbaar frame voor de statistieken
+    pred_frame = ctk.CTkScrollableFrame(content_frame, fg_color=steam_blue, width=800, height=550)
+    pred_frame.pack(pady=10, padx=10, fill=ctk.BOTH, expand=True)
 
-        # Create scrollable frame for descriptive statistics
-        desc_frame = ctk.CTkScrollableFrame(content_frame, fg_color=steam_blue, width=800, height=350)
-        desc_frame.pack(pady=10, padx=10, fill=ctk.BOTH, expand=True)
+    # Haal voorspellende statistieken op
+    predictions = hoofdprogramma()
 
-        # Initialize SteamData
-        steam_data = SteamData()
-        
-        # Get all available statistics
-        stats = {
-            "Gemiddelde prijs": steam_data.gemiddelde_prijs(),
-            "Gemiddelde speeltijd": steam_data.gemiddelde_speeltijd(),
-            "Meest voorkomende tags": steam_data.meest_voorkomende_tags(),
-            "Meest voorkomende genres": steam_data.meest_voorkomende_genres(),
-            "Populairste games": steam_data.populairste_games(),
-            "Best beoordeelde games": steam_data.best_beoordeelde_games(),
-            "Games per jaar": steam_data.games_per_jaar(),
-            "Games per uitgever": steam_data.games_per_uitgever()
-        }
+    # Toon de resultaten
+    title_label = ctk.CTkLabel(pred_frame, text="Voorspelde Statistieken", font=("bold", 24), text_color="white")
+    title_label.pack(pady=(0, 20))
 
-        # Display statistics in a formatted way
-        title_label = ctk.CTkLabel(desc_frame, text="Beschrijvende Statistieken (AI)", font=("bold", 24), text_color="white")
-        title_label.pack(pady=(0, 20))
+    for pred_name, pred_value in predictions.items():
+        pred_label = ctk.CTkLabel(pred_frame, text=f"{pred_name}: {pred_value}", text_color="white", font=("Arial", 16), anchor="w", wraplength=800)
+        pred_label.pack(pady=5, padx=10, anchor="w")
 
-        for stat_name, stat_value in stats.items():
-            stat_frame = ctk.CTkFrame(desc_frame, fg_color=steam_blue)
-            stat_frame.pack(fill=ctk.X, pady=5, padx=10)
-            
-            stat_label = ctk.CTkLabel(stat_frame, text=f"{stat_name}:", font=("bold", 16), text_color="white")
-            stat_label.pack(side=ctk.LEFT, padx=10)
-            
-            # Format the stat_value based on its type
-            if isinstance(stat_value, dict):
-                formatted_value = ", ".join([f"{k}: {v}" for k, v in stat_value.items()])
-            elif isinstance(stat_value, list):
-                formatted_value = ", ".join(map(str, stat_value))
-            else:
-                formatted_value = str(stat_value)
-            
-            value_label = ctk.CTkLabel(stat_frame, text=formatted_value, text_color="white", wraplength=400)
-            value_label.pack(side=ctk.LEFT, padx=10)
 
-    def show_predictive_stats():
-        # Clear previous content
-        for widget in content_frame.winfo_children():
-            widget.destroy()
-
-        # Create scrollable frame for predictive statistics
-        pred_frame = ctk.CTkScrollableFrame(content_frame, fg_color=steam_blue, width=800, height=350)
-        pred_frame.pack(pady=10, padx=10, fill=ctk.BOTH, expand=True)
-
-        # Get predictive statistics
-        predictions = hoofdprogramma()
-
-        # Display predictions in a formatted way
-        title_label = ctk.CTkLabel(pred_frame, text="Voorspellende Statistieken (AI)", font=("bold", 24), text_color="white")
-        title_label.pack(pady=(0, 20))
-
-        if isinstance(predictions, dict):
-            for pred_name, pred_value in predictions.items():
-                pred_frame = ctk.CTkFrame(pred_frame, fg_color=steam_blue)
-                pred_frame.pack(fill=ctk.X, pady=5, padx=10)
-                
-                pred_label = ctk.CTkLabel(pred_frame, text=f"{pred_name}:", font=("bold", 16), text_color="white")
-                pred_label.pack(side=ctk.LEFT, padx=10)
-                
-                value_label = ctk.CTkLabel(pred_frame, text=str(pred_value), text_color="white", wraplength=400)
-                value_label.pack(side=ctk.LEFT, padx=10)
-        else:
-            info_label = ctk.CTkLabel(pred_frame, text=str(predictions), text_color="white", wraplength=600)
-            info_label.pack(pady=10)
-
-    # Buttons for switching between descriptive and predictive statistics
-    desc_button = ctk.CTkButton(
-        selection_frame, 
-        fg_color=button_blue, 
-        text="Beschrijvende Stats", 
-        text_color="white",
-        command=show_descriptive_stats,
-        width=200
-    )
-    desc_button.pack(side=ctk.LEFT, padx=20, pady=10)
-
-    pred_button = ctk.CTkButton(
-        selection_frame, 
-        fg_color=button_blue, 
-        text="Voorspellende Stats", 
-        text_color="white",
-        command=show_predictive_stats,
-        width=200
-    )
-    pred_button.pack(side=ctk.RIGHT, padx=20, pady=10)
-
-    # Show descriptive statistics by default
-    show_descriptive_stats()
 
 mainpage()
 root.mainloop()
