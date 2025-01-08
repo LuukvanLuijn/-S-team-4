@@ -73,8 +73,10 @@ Jullie team fungeert als startup en is verantwoordelijk voor:
 Het project ondersteunt de volgende SDG's:
 
 - **4. Kwaliteitsonderwijs**: Door het analyseren van gamegedrag kunnen educatieve platforms inzicht krijgen in hoe jongeren leren en spelen, wat nuttig kan zijn bij het ontwerpen van educatieve content.
+- **7. Betaalbare en schone energie. Zorg voor toegang tot betaalbare, betrouwbare, duurzame en moderne energie voor iedereen.
 - **8. Waardig Werk en Economische Groei**: Door het bieden van inzichtelijke data aan ontwikkelaars en bedrijven in de gamingindustrie ondersteunt dit project economische groei.
 - **9. Industrie, Innovatie en Infrastructuur**: Met gebruik van data-analyse en hardware-interactie biedt dit project een innovatieve benadering voor data-gebaseerde oplossingen in de gamingwereld.
+
 
 
 ## Gebruik
