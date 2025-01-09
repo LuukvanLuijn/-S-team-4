@@ -1,264 +1,204 @@
+import psycopg2
 import matplotlib.pyplot as plt
-import psycopg2  # Bibliotheek voor PostgreSQL database verbinding
 
-# Functie om verbinding te maken met onze database
-def maak_database_verbinding():
-    """Probeer verbinding te maken met de Steam games database"""
-    try:
-        # Maak verbinding met onze database gegevens
-        verbinding = psycopg2.connect(
-            dbname="steam",
-            user="postgres",
-            password="123Welkom123!",
-            host="20.58.44.220",
-            port="5432"
-        )
-        print("Succesvol verbonden met database!")
-        return verbinding
-    except Exception as fout:
-        print(f"Kon geen verbinding maken met database: {fout}")
-        return None
+class Game:
+    def __init__(self, price, positive_ratings):
+        self.price = float(price)
+        self.positive_ratings = float(positive_ratings)
 
-class LineaireRegressie:
-    """Een eenvoudig lineaire regressie model met gebruik van gradiënt afdaling"""
-    
-    def __init__(self, leer_snelheid=0.01, aantal_iteraties=1000):
-        # Initialiseer model parameters
-        self.leer_snelheid = leer_snelheid  # Hoe snel het model leert
-        self.aantal_iteraties = aantal_iteraties  # Hoe vaak we trainen
-        self.gewichten = []  # Model gewichten (geïnitialiseerd tijdens training)
-        self.fouten_geschiedenis = []  # Bijhouden van fouten tijdens training
-    
-    def bereken_fout(self, werkelijke_y, voorspelde_y):
-        """Bereken de gemiddelde kwadratische fout tussen werkelijke en voorspelde waarden"""
-        aantal_voorbeelden = len(werkelijke_y)
-        totale_fout = 0
+class DatabaseConnection:
+    def __init__(self, dbname, user, password, host, port):
+        self.dbname = dbname
+        self.user = user
+        self.password = password
+        self.host = host
+        self.port = port
+        self.connection = None
+
+    def connect(self):
+        try:
+            self.connection = psycopg2.connect(
+                dbname=self.dbname,
+                user=self.user,
+                password=self.password,
+                host=self.host,
+                port=self.port
+            )
+            print("Successfully connected to database!")
+            return self.connection
+        except Exception as error:
+            print(f"Could not connect to database: {error}")
+            return None
+
+    def close(self):
+        if self.connection:
+            self.connection.close()
+
+class DataProcessor:
+    def __init__(self, db_connection):
+        self.db_connection = db_connection
+        self.games = []
+
+    def fetch_data(self, limit=100):
+        connection = self.db_connection.connect()
+        if connection:
+            cursor = connection.cursor()
+            query = """
+                WITH filtered_games AS (
+                    SELECT 
+                        CAST(price AS NUMERIC) as price, 
+                        CAST(positive_ratings AS INTEGER) as positive_ratings
+                    FROM games
+                    WHERE 
+                        price IS NOT NULL 
+                        AND positive_ratings IS NOT NULL 
+                        AND CAST(price AS NUMERIC) BETWEEN 5 AND 40
+                        AND CAST(positive_ratings AS INTEGER) BETWEEN 100 AND 5000
+                        AND CAST(average_playtime AS INTEGER) > 0
+                )
+                SELECT price, positive_ratings
+                FROM filtered_games
+                WHERE price > (SELECT AVG(price) - 2 * STDDEV(price) FROM filtered_games)
+                AND price < (SELECT AVG(price) + 2 * STDDEV(price) FROM filtered_games)
+                ORDER BY positive_ratings ASC
+                LIMIT %s;
+            """
+            cursor.execute(query, (limit,))
+            data = cursor.fetchall()
+            self.games = [Game(price, ratings) for price, ratings in data]
+            connection.close()
+            return self.games
+        return []
+
+    def normalize_data(self):
+        if not self.games:
+            return [], [], []
+
+        prices = [game.price for game in self.games]
+        ratings = [game.positive_ratings for game in self.games]
         
-        # Loop door elk voorbeeld om de fout te berekenen
-        for i in range(aantal_voorbeelden):
-            fout = (werkelijke_y[i] - voorspelde_y[i]) ** 2
-            totale_fout = totale_fout + fout
+        price_min, price_max = min(prices), max(prices)
+        normalized_prices = [
+            (price - price_min) / (price_max - price_min) 
+            for price in prices
+        ]
         
-        return totale_fout / (2 * aantal_voorbeelden)
-    
-    def voorspel(self, X):
-        """Maak voorspellingen met huidige gewichten"""
-        voorspellingen = []
-        
-        # Voor elk datapunt
-        for x in X:
-            # Bereken voorspelling voor dit punt
-            voorspelling = 0
-            for i in range(len(self.gewichten)):
-                voorspelling = voorspelling + (self.gewichten[i] * x[i])
-            voorspellingen.append(voorspelling)
-            
-        return voorspellingen
-    
+        return normalized_prices, ratings, prices
+
+class LinearRegression:
+    def __init__(self, learning_rate=0.01, iterations=1000):
+        self.learning_rate = learning_rate
+        self.iterations = iterations
+        self.theta0 = 0
+        self.theta1 = 0
+
     def train(self, X, y):
-        """Train het model met gradiënt afdaling"""
-        # Initialiseer gewichten met nullen
-        aantal_kenmerken = len(X[0])
-        self.gewichten = []
-        for i in range(aantal_kenmerken):
-            self.gewichten.append(0)
+        m = len(y)
         
-        # Training loop
-        for iteratie in range(self.aantal_iteraties):
-            # Maak voorspellingen met huidige gewichten
-            voorspellingen = self.voorspel(X)
-            
-            # Bereken fouten
-            fouten = []
-            for i in range(len(y)):
-                fout = voorspellingen[i] - y[i]
-                fouten.append(fout)
-            
-            # Update elk gewicht
-            for j in range(aantal_kenmerken):
-                # Bereken gradiënt
-                gradient = 0
-                for i in range(len(X)):
-                    gradient = gradient + (fouten[i] * X[i][j])
-                gradient = gradient / len(X)
-                
-                # Update gewicht met gradiënt afdaling
-                self.gewichten[j] = self.gewichten[j] - (self.leer_snelheid * gradient)
-            
-            # Bereken en bewaar fout voor deze iteratie
-            huidige_fout = self.bereken_fout(y, voorspellingen)
-            self.fouten_geschiedenis.append(huidige_fout)
-            
-            # Print voortgang elke 100 iteraties
-            if iteratie % 100 == 0:
-                print(f"Training iteratie {iteratie}, Fout: {huidige_fout:.4f}")
+        for _ in range(self.iterations):
+            h = [self.theta0 + self.theta1 * x for x in X]
+            gradient0 = sum(h_i - y_i for h_i, y_i in zip(h, y)) / m
+            gradient1 = sum((h_i - y_i) * x for h_i, y_i, x in zip(h, y, X)) / m
+            self.theta0 -= self.learning_rate * gradient0
+            self.theta1 -= self.learning_rate * gradient1
 
-def schaal_kenmerken(data):
-    """Schaal data naar bereik [0,1] met min-max schaling"""
-    min_waarde = min(data)
-    max_waarde = max(data)
-    geschaalde_data = []
-    
-    if max_waarde > min_waarde:
-        for x in data:
-            geschaalde_waarde = (x - min_waarde) / (max_waarde - min_waarde)
-            geschaalde_data.append(geschaalde_waarde)
-        return geschaalde_data
-    else:
-        # Als alle waarden hetzelfde zijn, return lijst met nullen
-        for x in data:
-            geschaalde_data.append(0)
-        return geschaalde_data
+    def predict(self, X):
+        return [self.theta0 + self.theta1 * x for x in X]
 
-def voeg_bias_toe(X):
-    """Voeg een kolom met enen toe aan onze data voor de bias term"""
-    X_met_bias = []
-    for rij in X:
-        nieuwe_rij = [1]  # Voeg de bias term (1) toe aan het begin
-        for waarde in rij:
-            nieuwe_rij.append(waarde)
-        X_met_bias.append(nieuwe_rij)
-    return X_met_bias
+    def compute_r_squared(self, y, y_pred):
+        y_mean = sum(y) / len(y)
+        ss_total = sum((y_i - y_mean) * (y_i - y_mean) for y_i in y)
+        ss_residual = sum((y_i - y_pred_i) * (y_i - y_pred_i) 
+                         for y_i, y_pred_i in zip(y, y_pred))
+        return 1 - (ss_residual / ss_total)
 
-# Hoofdprogramma
-def hoofdprogramma():
-    # Maak verbinding met database
-    verbinding = maak_database_verbinding()
-    
-    if verbinding:
-        # Haal data op uit database
-        cursor = verbinding.cursor()
-        cursor.execute("SELECT price, positive_ratings, genres, categories, average_playtime, name FROM games LIMIT 1000;")
-        spellen_data = cursor.fetchall()
-        verbinding.close()
+class Visualizer:
+    @staticmethod
+    def plot_regression(original_prices, y, y_pred, r_squared):
+        plt.figure(figsize=(10, 6), facecolor='white')
+        ax = plt.gca()
+        ax.set_facecolor('white')
         
-        # Bereid data voor voor het model
-        spellen = []
-        weergave_info = []
+        # Plot scatter points
+        plt.scatter(original_prices, y, 
+                   color='#3498db',
+                   alpha=0.6, 
+                   s=70,
+                   label='Games')
         
-        # Verwerk elk spel
-        for spel in spellen_data:
-            # Haal kenmerken op
-            prijs = float(spel[0])
-            positieve_beoordelingen = int(spel[1])
-            
-            # Tel aantal genres
-            genres = spel[2].split(";")
-            aantal_genres = len(genres)
-            
-            # Tel aantal categorieën
-            categorieen = spel[3].split(";")
-            aantal_categorieen = len(categorieen)
-            
-            speeltijd = int(spel[4])
-            naam = spel[5]
-            
-            # Bewaar kenmerken en doel
-            kenmerken = [prijs, positieve_beoordelingen, aantal_genres, aantal_categorieen]
-            spellen.append((kenmerken, speeltijd))
-            weergave_info.append((naam, speeltijd, positieve_beoordelingen))
+        # Sort data for line plot
+        sorted_indices = sorted(range(len(original_prices)), 
+                              key=lambda k: original_prices[k])
+        sorted_prices = [original_prices[i] for i in sorted_indices]
+        sorted_predictions = [y_pred[i] for i in sorted_indices]
         
-        # Split kenmerken (X) en doel (y)
-        X = []
-        y = []
-        for spel in spellen:
-            X.append(spel[0])
-            y.append(spel[1])
+        # Plot regression line
+        plt.plot(sorted_prices, sorted_predictions, 
+                color='#e74c3c',
+                linewidth=2.5,
+                label=f'Regression Line (R² = {r_squared:.4f})')
         
-        # Schaal kenmerken
-        kenmerken_per_kolom = []
-        for i in range(len(X[0])):
-            kolom = []
-            for rij in X:
-                kolom.append(rij[i])
-            kenmerken_per_kolom.append(kolom)
+        plt.grid(True, linestyle='--', alpha=0.3, color='gray')
         
-        # Schaal elke kolom
-        geschaalde_kolommen = []
-        for kolom in kenmerken_per_kolom:
-            geschaalde_kolom = schaal_kenmerken(kolom)
-            geschaalde_kolommen.append(geschaalde_kolom)
+        plt.xlabel('Game Price ($)', fontsize=12, fontweight='bold')
+        plt.ylabel('Positive Ratings', fontsize=12, fontweight='bold')
+        plt.title('Steam Games: Price vs Positive Ratings', 
+                 fontsize=14, 
+                 fontweight='bold', 
+                 pad=20)
         
-        # Reorganiseer terug naar rijen
-        X_geschaald = []
-        for i in range(len(X)):
-            rij = []
-            for kol in geschaalde_kolommen:
-                rij.append(kol[i])
-            X_geschaald.append(rij)
+        plt.legend(loc='upper right', 
+                  frameon=True, 
+                  facecolor='white', 
+                  edgecolor='none',
+                  fontsize=10)
         
-        # Voeg bias term toe
-        X_geschaald = voeg_bias_toe(X_geschaald)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
         
-        # Split in training en test sets (80% training, 20% test)
-        training_grootte = int(0.8 * len(X_geschaald))
-        
-        X_train = []
-        X_test = []
-        y_train = []
-        y_test = []
-        
-        # Split X data
-        for i in range(len(X_geschaald)):
-            if i < training_grootte:
-                X_train.append(X_geschaald[i])
-            else:
-                X_test.append(X_geschaald[i])
-        
-        # Split y data
-        for i in range(len(y)):
-            if i < training_grootte:
-                y_train.append(y[i])
-            else:
-                y_test.append(y[i])
-        
-        # Maak en train model
-        model = LineaireRegressie(leer_snelheid=0.1, aantal_iteraties=500)
-        model.train(X_train, y_train)
-        
-        # Test model
-        test_voorspellingen = model.voorspel(X_test)
-        test_fout = model.bereken_fout(y_test, test_voorspellingen)
-        print(f"Test Fout: {test_fout:.4f}")
-        
-        # Maak voorspellingen voor alle spellen
-        alle_voorspellingen = model.voorspel(X_geschaald)
-        
-        # Combineer voorspellingen met spel info
-        spel_voorspellingen = []
-        for i in range(len(alle_voorspellingen)):
-            spel_voorspelling = (weergave_info[i][0], alle_voorspellingen[i], weergave_info[i][2])
-            spel_voorspellingen.append(spel_voorspelling)
-        
-        # Sorteer spellen op voorspelde speeltijd
-        spel_voorspellingen.sort(key=lambda x: x[1], reverse=True)
-        
-        # Pak top 10 spellen
-        top_spellen = []
-        for i in range(10):
-            top_spellen.append(spel_voorspellingen[i])
-        
-        # Bereid data voor voor plot
-        namen = []
-        voorspelde_tijden = []
-        beoordelingen = []
-        for spel in top_spellen:
-            namen.append(spel[0])
-            voorspelde_tijden.append(spel[1])
-            beoordelingen.append(spel[2])
-        
-        # Maak staafdiagram
-        plt.figure(figsize=(10, 6))
-        plt.barh(namen, voorspelde_tijden, color="skyblue")
-        plt.xlabel("Voorspelde Speeltijd")
-        plt.ylabel("Spelnamen")
-        plt.title("Top 10 Spellen op Basis van Voorspelde Speeltijd")
-        plt.gca().invert_yaxis()  # Toon hoogste waarde bovenaan
-        plt.grid(axis="x", linestyle="--", alpha=0.7)
+        plt.margins(x=0.1)
+        plt.tight_layout()
         plt.show()
-    else:
-        print("Kon geen gegevens ophalen uit de database.")
 
-# Start het programma
+class SteamAnalyzer:
+    def __init__(self, db_config):
+        self.db_connection = DatabaseConnection(**db_config)
+        self.data_processor = DataProcessor(self.db_connection)
+        self.model = LinearRegression()
+        self.visualizer = Visualizer()
+
+    def analyze(self, limit=100):
+        print("Fetching data from database...")
+        games = self.data_processor.fetch_data(limit)
+        
+        if not games:
+            print("No data fetched from database!")
+            return
+            
+        print(f"Fetched {len(games)} records")
+        
+        X, y, original_prices = self.data_processor.normalize_data()
+        
+        print("\nTraining model...")
+        self.model.train(X, y)
+        
+        y_pred = self.model.predict(X)
+        r_squared = self.model.compute_r_squared(y, y_pred)
+        
+        print("\nGenerating visualization...")
+        self.visualizer.plot_regression(original_prices, y, y_pred, r_squared)
+
+def main():
+    db_config = {
+        "dbname": "steam",
+        "user": "postgres",
+        "password": "123Welkom123!", 
+        "host": "20.58.44.220",
+        "port": "5432"
+    }
+    
+    analyzer = SteamAnalyzer(db_config)
+    analyzer.analyze(limit=100)
+
 if __name__ == "__main__":
-    hoofdprogramma()
+    main()
