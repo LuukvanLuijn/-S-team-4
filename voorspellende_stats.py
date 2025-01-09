@@ -188,7 +188,17 @@ class SteamAnalyzer:
         print("\nGenerating visualization...")
         self.visualizer.plot_regression(original_prices, y, y_pred, r_squared)
 
-
+def main():
+    db_config = {
+        "dbname": "steam",
+        "user": "postgres",
+        "password": "123Welkom123!", 
+        "host": "20.58.44.220",
+        "port": "5432"
+    }
+    
+    analyzer = SteamAnalyzer(db_config)
+    analyzer.analyze(limit=100)
 
 if __name__ == "__main__":
     main()
