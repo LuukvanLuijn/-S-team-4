@@ -2,8 +2,7 @@ import customtkinter as ctk
 import requests, psycopg2, webbrowser, _json, random
 from PIL import Image
 from io import BytesIO
-from Beschrijvende_stats import SteamData
-from voorspellende_stats import hoofdprogramma
+from voorspellende_stats import main
 title_variations = ["Are You Winning?","Level Up Your Game","The Npc's Are Waiting For U", "Unlock New Worlds", "Try Terraria", "Game On", "Let's Play Together", "Get Ready To Play", "Dive Into Action", "Connect With Friends", "Ready Up", "Play, Share, Connect", "Where Gamers Unite", "Just For Fun", "Chill And Play", "Game Time", "Let's Have Some Fun", "Your Next Challenge Awaits", "Rise To The Challenge", "Play Hard, Win Big", "Achieve Your Goals", "The Game Is On", "Discover New Adventures", "Explore The Unknown", "Uncover Hidden Gems", "Your Journey Awaits"]
 root = ctk.CTk()
 root.geometry("900x700")  
@@ -130,10 +129,6 @@ def mainpage():
     vrienden_label.pack(side=ctk.RIGHT, padx=(5, 20), pady=10)
     donation_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="Doneer", text_color="white", command=donation_button)
     donation_label.pack(side=ctk.RIGHT, padx=2, pady=10)
-    stats_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="%",font=("arial", 20), text_color="white", width=30, height=30)
-    stats_label.pack(side=ctk.RIGHT, padx=2, pady=10)
-    
-    # Add the new AI stats button
     ai_stats_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="AI", font=("arial", 20), text_color="white", width=30, height=30, command=ai_statistics_page)
     ai_stats_label.pack(side=ctk.RIGHT, padx=2, pady=10)
 
@@ -329,7 +324,7 @@ def ai_statistics_page():
     pred_frame.pack(pady=10, padx=10, fill=ctk.BOTH, expand=True)
 
     # Haal voorspellende statistieken op
-    predictions = hoofdprogramma()
+    predictions = main()
 
     # Toon de resultaten
     title_label = ctk.CTkLabel(pred_frame, text="Voorspelde Statistieken", font=("bold", 24), text_color="white")
