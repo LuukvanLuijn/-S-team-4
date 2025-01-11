@@ -133,13 +133,9 @@ def mainpage():
     vrienden_label.pack(side=ctk.RIGHT, padx=(5, 20), pady=10)
     donation_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="Doneer", text_color="white", command=donation_button)
     donation_label.pack(side=ctk.RIGHT, padx=2, pady=10)
-    stats_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="%",font=("arial", 20), text_color="white", width=30, height=30)
-    stats_label.pack(side=ctk.RIGHT, padx=2, pady=10)
     MiniSteam_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="TI",font=("arial", 20), text_color="white",command=SteamMini_page, width=30, height=30)
     MiniSteam_label.pack(side=ctk.RIGHT, padx=2, pady=10)
 
-
-    # Add the new AI stats button
     ai_stats_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="AI", font=("arial", 20), text_color="white", width=30, height=30, command=ai_statistics_page)
     ai_stats_label.pack(side=ctk.RIGHT, padx=2, pady=10)
 
