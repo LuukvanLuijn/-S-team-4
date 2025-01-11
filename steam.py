@@ -2,8 +2,7 @@ import customtkinter as ctk
 import requests, psycopg2, webbrowser, _json, random, time
 from PIL import Image
 from io import BytesIO
-from Beschrijvende_stats import SteamData
-from voorspellende_stats import hoofdprogramma
+from voorspellende_stats import main
 from paho.mqtt import client as mqtt_client
 
 title_variations = ["Are You Winning?","Level Up Your Game","The Npc's Are Waiting For U", "Unlock New Worlds", "Try Terraria", "Game On", "Let's Play Together", "Get Ready To Play", "Dive Into Action", "Connect With Friends", "Ready Up", "Play, Share, Connect", "Where Gamers Unite", "Just For Fun", "Chill And Play", "Game Time", "Let's Have Some Fun", "Your Next Challenge Awaits", "Rise To The Challenge", "Play Hard, Win Big", "Achieve Your Goals", "The Game Is On", "Discover New Adventures", "Explore The Unknown", "Uncover Hidden Gems", "Your Journey Awaits", "Samuel is brak"]
@@ -336,7 +335,7 @@ def ai_statistics_page():
     pred_frame.pack(pady=10, padx=10, fill=ctk.BOTH, expand=True)
 
     # Haal voorspellende statistieken op
-    predictions = hoofdprogramma()
+    predictions = main()
 
     # Toon de resultaten
     title_label = ctk.CTkLabel(pred_frame, text="Voorspelde Statistieken", font=("bold", 24), text_color="white")
