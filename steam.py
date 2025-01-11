@@ -280,7 +280,16 @@ def vriendenpage():
                 friend_data = friend_summary_response.json()
                 if friend_data['response']['players']:
                     friend_username = friend_data['response']['players'][0]['personaname']
-                    friends_usernames.append(friend_username)
+                    friend_status = friend_data['response']['players'][0]['personastate']
+                    if friend_status == 0:
+                        friend_status = "Offline"
+                    elif friend_status == 1:
+                        friend_status = "Online"
+                    elif friend_status == 2:
+                        friend_status = "Busy"
+                    elif friend_status == 3:
+                        friend_status = "Away"
+                    friends_usernames.append(f"{friend_username} ({friend_status})")
             print(f"logged in as: {naam}")
             vriendenpage()
         else:
