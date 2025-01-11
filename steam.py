@@ -1,9 +1,11 @@
 import customtkinter as ctk
-import requests, psycopg2, webbrowser, _json, random
+import requests, psycopg2, webbrowser, _json, random, time
 from PIL import Image
 from io import BytesIO
 from voorspellende_stats import main
-title_variations = ["Are You Winning?","Level Up Your Game","The Npc's Are Waiting For U", "Unlock New Worlds", "Try Terraria", "Game On", "Let's Play Together", "Get Ready To Play", "Dive Into Action", "Connect With Friends", "Ready Up", "Play, Share, Connect", "Where Gamers Unite", "Just For Fun", "Chill And Play", "Game Time", "Let's Have Some Fun", "Your Next Challenge Awaits", "Rise To The Challenge", "Play Hard, Win Big", "Achieve Your Goals", "The Game Is On", "Discover New Adventures", "Explore The Unknown", "Uncover Hidden Gems", "Your Journey Awaits"]
+from paho.mqtt import client as mqtt_client
+
+title_variations = ["Are You Winning?","Level Up Your Game","The Npc's Are Waiting For U", "Unlock New Worlds", "Try Terraria", "Game On", "Let's Play Together", "Get Ready To Play", "Dive Into Action", "Connect With Friends", "Ready Up", "Play, Share, Connect", "Where Gamers Unite", "Just For Fun", "Chill And Play", "Game Time", "Let's Have Some Fun", "Your Next Challenge Awaits", "Rise To The Challenge", "Play Hard, Win Big", "Achieve Your Goals", "The Game Is On", "Discover New Adventures", "Explore The Unknown", "Uncover Hidden Gems", "Your Journey Awaits", "Samuel is brak"]
 root = ctk.CTk()
 root.geometry("900x700")  
 root.title(f"STEAM: {random.choice(title_variations)}")
@@ -17,6 +19,8 @@ avatar = None
 global naam
 global friends
 friends = []
+
+
 
 def imagegrabber(url):
     response = requests.get(url)
@@ -129,6 +133,13 @@ def mainpage():
     vrienden_label.pack(side=ctk.RIGHT, padx=(5, 20), pady=10)
     donation_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="Doneer", text_color="white", command=donation_button)
     donation_label.pack(side=ctk.RIGHT, padx=2, pady=10)
+    stats_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="%",font=("arial", 20), text_color="white", width=30, height=30)
+    stats_label.pack(side=ctk.RIGHT, padx=2, pady=10)
+    MiniSteam_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="TI",font=("arial", 20), text_color="white",command=SteamMini_page, width=30, height=30)
+    MiniSteam_label.pack(side=ctk.RIGHT, padx=2, pady=10)
+
+
+    # Add the new AI stats button
     ai_stats_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="AI", font=("arial", 20), text_color="white", width=30, height=30, command=ai_statistics_page)
     ai_stats_label.pack(side=ctk.RIGHT, padx=2, pady=10)
 
@@ -335,6 +346,76 @@ def ai_statistics_page():
         pred_label.pack(pady=5, padx=10, anchor="w")
 
 
+
+
+broker = 'broker.hivemq.com'
+port = 1883
+topic = "SteamIdSTeam"
+client_id = f'publish-{random.randint(0, 1000)}'
+username = 'emqx'
+password = 'public'
+
+def connect_mqtt():
+    def on_connect(client, userdata, flags, rc):
+        if rc == 0:
+            print("Connected to MQTT Broker!")
+        else:
+            print("Failed to connect, return code %d\n", rc)
+
+    client = mqtt_client.Client(client_id)
+    client.username_pw_set(username, password)
+    client.on_connect = on_connect
+    client.connect(broker, port)
+    return client
+
+def publish(client, msg):
+    result = client.publish(topic, msg)
+    status = result[0]
+    if status == 0:
+        print(f"Send `{msg}` to topic `{topic}`")
+    else:
+        print(f"Failed to send message to topic {topic}")
+
+def SteamMini_Connection():
+    steam_id = SteamID_entry.get()
+    publish(mqtt_client_instance, steam_id)
+
+def SteamMini_page():
+    global mqtt_client_instance
+    mqtt_client_instance = connect_mqtt()
+    mqtt_client_instance.loop_start()
+
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    top_frame = ctk.CTkFrame(root, width=900, height=50, fg_color=steam_blue)
+    top_frame.pack(side=ctk.TOP, fill=ctk.X, pady=(20, 0))
+    
+    terug_label = ctk.CTkButton(top_frame, fg_color=button_blue, text="Terug", text_color="white", command=mainpage)
+    terug_label.pack(side=ctk.LEFT, padx=20, pady=10)
+    
+    ti_label = ctk.CTkLabel(top_frame, text="Connecteer aan de SteamMini (TI)", text_color="white", font=("bold", 30))
+    ti_label.pack(side=ctk.LEFT, padx=40, pady=10)
+
+    # Frame voor de SteamMini connectie
+    sLogin_frame = ctk.CTkFrame(root, width=850, height=150, fg_color=steam_blue)
+    sLogin_frame.pack(pady=20, fill=ctk.X)
+
+    sLogin_label = ctk.CTkLabel(sLogin_frame, text="Voer je SteamID/Vanity in.", font=("Arial", 20), text_color="white")
+    sLogin_label.pack(pady=10)
+
+    global SteamID_entry
+    SteamID_entry = ctk.CTkEntry(sLogin_frame, width=300, font=("Arial", 20), text_color="black")
+    SteamID_entry.pack(pady=10)
+
+    sLogin_button = ctk.CTkButton(sLogin_frame, text="Login button", text_color="white", command=SteamMini_Connection, fg_color=steam_blue)
+    sLogin_button.pack(pady=10)
+
+    Uitleg_frame = ctk.CTkFrame(root, width=850, height=150, fg_color=steam_blue)
+    Uitleg_frame.pack(pady=20, fill=ctk.X)
+
+    uitleg_lable = ctk.CTkLabel(Uitleg_frame, text="De SteamMini is een klein apparaatje dat je kan verbinden met je Steam account. \nZo Kun je je vrienden zien, je games en meer! Op de Mini Steam device ga naar Kolom 3 Rij 3, Connect. Wacht tot het schermpje MQTT Data Check laat zien en stuur dan de nieuwe steam ID met de login button.", text_color="white", font=("Arial", 20), wraplength=800)
+    uitleg_lable.pack(pady=10)
 
 mainpage()
 root.mainloop()
