@@ -405,7 +405,8 @@ def SteamMini_page():
     sLogin_label.pack(pady=10)
 
     global SteamID_entry
-    SteamID_entry = ctk.CTkEntry(sLogin_frame, width=300, font=("Arial", 20), text_color="black")
+    SteamID_entry = ctk.CTkEntry(sLogin_frame, width=300, font=("Arial", 20), text_color="white")
+    SteamID_entry.insert(0, "76561198823965926")
     SteamID_entry.pack(pady=10)
 
     sLogin_button = ctk.CTkButton(sLogin_frame, text="Login button", text_color="white", command=SteamMini_Connection, fg_color=steam_blue)

@@ -123,10 +123,6 @@ def NextWiFi():
         ssid = 'Daniel'
         password = 'Helloworld'
         NetworkTry = NetworkTry + 1
-    elif NetworkTry == 3:
-        ssid = 'WBS-WiFi'
-        password = 'W3b3rBBQF@n'
-        NetworkTry = NetworkTry + 1
     else:
         NetworkTry = 1
     print(ssid)
