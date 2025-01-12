@@ -133,7 +133,7 @@ def plot_comparison(X, y):
 def main():
     try:
         # Load data
-        with open('-S-team-4/steam_games.json', 'r') as f:
+        with open('steam_games.json', 'r') as f:
             data = json.load(f)
         
         X = []  # peak_players
