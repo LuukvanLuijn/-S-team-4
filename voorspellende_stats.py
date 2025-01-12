@@ -1,204 +1,154 @@
-import psycopg2
+import json
 import matplotlib.pyplot as plt
-
-class Game:
-    def __init__(self, price, positive_ratings):
-        self.price = float(price)
-        self.positive_ratings = float(positive_ratings)
-
-class DatabaseConnection:
-    def __init__(self, dbname, user, password, host, port):
-        self.dbname = dbname
-        self.user = user
-        self.password = password
-        self.host = host
-        self.port = port
-        self.connection = None
-
-    def connect(self):
-        try:
-            self.connection = psycopg2.connect(
-                dbname=self.dbname,
-                user=self.user,
-                password=self.password,
-                host=self.host,
-                port=self.port
-            )
-            print("Successfully connected to database!")
-            return self.connection
-        except Exception as error:
-            print(f"Could not connect to database: {error}")
-            return None
-
-    def close(self):
-        if self.connection:
-            self.connection.close()
-
-class DataProcessor:
-    def __init__(self, db_connection):
-        self.db_connection = db_connection
-        self.games = []
-
-    def fetch_data(self, limit=100):
-        connection = self.db_connection.connect()
-        if connection:
-            cursor = connection.cursor()
-            query = """
-                WITH filtered_games AS (
-                    SELECT 
-                        CAST(price AS NUMERIC) as price, 
-                        CAST(positive_ratings AS INTEGER) as positive_ratings
-                    FROM games
-                    WHERE 
-                        price IS NOT NULL 
-                        AND positive_ratings IS NOT NULL 
-                        AND CAST(price AS NUMERIC) BETWEEN 5 AND 40
-                        AND CAST(positive_ratings AS INTEGER) BETWEEN 100 AND 5000
-                        AND CAST(average_playtime AS INTEGER) > 0
-                )
-                SELECT price, positive_ratings
-                FROM filtered_games
-                WHERE price > (SELECT AVG(price) - 2 * STDDEV(price) FROM filtered_games)
-                AND price < (SELECT AVG(price) + 2 * STDDEV(price) FROM filtered_games)
-                ORDER BY positive_ratings ASC
-                LIMIT %s;
-            """
-            cursor.execute(query, (limit,))
-            data = cursor.fetchall()
-            self.games = [Game(price, ratings) for price, ratings in data]
-            connection.close()
-            return self.games
-        return []
-
-    def normalize_data(self):
-        if not self.games:
-            return [], [], []
-
-        prices = [game.price for game in self.games]
-        ratings = [game.positive_ratings for game in self.games]
-        
-        price_min, price_max = min(prices), max(prices)
-        normalized_prices = [
-            (price - price_min) / (price_max - price_min) 
-            for price in prices
-        ]
-        
-        return normalized_prices, ratings, prices
 
 class LinearRegression:
     def __init__(self, learning_rate=0.01, iterations=1000):
         self.learning_rate = learning_rate
         self.iterations = iterations
-        self.theta0 = 0
-        self.theta1 = 0
-
-    def train(self, X, y):
-        m = len(y)
+        self.weights = None
+        self.bias = None
+        
+    def normalize_data(self, X):
+        X_min = min(X)
+        X_max = max(X)
+        return [(x - X_min)/(X_max - X_min) for x in X], (X_min, X_max)
+    
+    def fit(self, X, y):
+        # Normalize data
+        X_norm, (X_min, X_max) = self.normalize_data(X)
+        y_norm, (y_min, y_max) = self.normalize_data(y)
+        
+        n_samples = len(X_norm)
+        self.weights = 1.0
+        self.bias = 0.0
         
         for _ in range(self.iterations):
-            h = [self.theta0 + self.theta1 * x for x in X]
-            gradient0 = sum(h_i - y_i for h_i, y_i in zip(h, y)) / m
-            gradient1 = sum((h_i - y_i) * x for h_i, y_i, x in zip(h, y, X)) / m
-            self.theta0 -= self.learning_rate * gradient0
-            self.theta1 -= self.learning_rate * gradient1
-
-    def predict(self, X):
-        return [self.theta0 + self.theta1 * x for x in X]
-
-    def compute_r_squared(self, y, y_pred):
-        y_mean = sum(y) / len(y)
-        ss_total = sum((y_i - y_mean) * (y_i - y_mean) for y_i in y)
-        ss_residual = sum((y_i - y_pred_i) * (y_i - y_pred_i) 
-                         for y_i, y_pred_i in zip(y, y_pred))
-        return 1 - (ss_residual / ss_total)
-
-class Visualizer:
-    @staticmethod
-    def plot_regression(original_prices, y, y_pred, r_squared):
-        plt.figure(figsize=(10, 6), facecolor='white')
-        ax = plt.gca()
-        ax.set_facecolor('white')
-        
-        # Plot scatter points
-        plt.scatter(original_prices, y, 
-                   color='#3498db',
-                   alpha=0.6, 
-                   s=70,
-                   label='Games')
-        
-        # Sort data for line plot
-        sorted_indices = sorted(range(len(original_prices)), 
-                              key=lambda k: original_prices[k])
-        sorted_prices = [original_prices[i] for i in sorted_indices]
-        sorted_predictions = [y_pred[i] for i in sorted_indices]
-        
-        # Plot regression line
-        plt.plot(sorted_prices, sorted_predictions, 
-                color='#e74c3c',
-                linewidth=2.5,
-                label=f'Regression Line (R² = {r_squared:.4f})')
-        
-        plt.grid(True, linestyle='--', alpha=0.3, color='gray')
-        
-        plt.xlabel('Game Price ($)', fontsize=12, fontweight='bold')
-        plt.ylabel('Positive Ratings', fontsize=12, fontweight='bold')
-        plt.title('Steam Games: Price vs Positive Ratings', 
-                 fontsize=14, 
-                 fontweight='bold', 
-                 pad=20)
-        
-        plt.legend(loc='upper right', 
-                  frameon=True, 
-                  facecolor='white', 
-                  edgecolor='none',
-                  fontsize=10)
-        
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        
-        plt.margins(x=0.1)
-        plt.tight_layout()
-        plt.show()
-
-class SteamAnalyzer:
-    def __init__(self, db_config):
-        self.db_connection = DatabaseConnection(**db_config)
-        self.data_processor = DataProcessor(self.db_connection)
-        self.model = LinearRegression()
-        self.visualizer = Visualizer()
-
-    def analyze(self, limit=100):
-        print("Fetching data from database...")
-        games = self.data_processor.fetch_data(limit)
-        
-        if not games:
-            print("No data fetched from database!")
-            return
+            y_pred = [self.weights * x + self.bias for x in X_norm]
             
-        print(f"Fetched {len(games)} records")
+            dw = (-2/n_samples) * sum((y_norm[j] - y_pred[j]) * X_norm[j] for j in range(n_samples))
+            db = (-2/n_samples) * sum(y_norm[j] - y_pred[j] for j in range(n_samples))
+            
+            self.weights -= self.learning_rate * dw
+            self.bias -= self.learning_rate * db
         
-        X, y, original_prices = self.data_processor.normalize_data()
-        
-        print("\nTraining model...")
-        self.model.train(X, y)
-        
-        y_pred = self.model.predict(X)
-        r_squared = self.model.compute_r_squared(y, y_pred)
-        
-        print("\nGenerating visualization...")
-        self.visualizer.plot_regression(original_prices, y, y_pred, r_squared)
-
-def main():
-    db_config = {
-        "dbname": "steam",
-        "user": "postgres",
-        "password": "123Welkom123!", 
-        "host": "20.58.44.220",
-        "port": "5432"
-    }
+        # Denormalize parameters
+        self.weights = self.weights * (y_max - y_min)/(X_max - X_min)
+        self.bias = y_min + (y_max - y_min) * self.bias - self.weights * X_min
     
-    analyzer = SteamAnalyzer(db_config)
-    analyzer.analyze(limit=100)
+    def predict(self, X):
+        return [self.weights * x + self.bias for x in X]
 
+def compute_correlation(X, y):
+    n = len(X)
+    if n == 0:
+        return 0
+    
+    mean_x = sum(X) / n
+    mean_y = sum(y) / n
+    
+    variance_x = sum((x - mean_x) ** 2 for x in X)
+    variance_y = sum((y - mean_y) ** 2 for y in y)
+    
+    covariance = sum((X[i] - mean_x) * (y[i] - mean_y) for i in range(n))
+    
+    if variance_x * variance_y == 0:
+        return 0
+        
+    return covariance / ((variance_x * variance_y) ** 0.5)
+
+def compute_r_squared(y_true, y_pred):
+    mean_y = sum(y_true) / len(y_true)
+    ss_tot = sum((y - mean_y) ** 2 for y in y_true)
+    ss_res = sum((y_true[i] - y_pred[i]) ** 2 for i in range(len(y_true)))
+    
+    if ss_tot == 0:
+        return 0
+    return 1 - (ss_res / ss_tot)
+
+def plot_comparison(X, y):
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
+    
+    # Full range plot (0-50k)
+    model_full = LinearRegression()
+    model_full.fit(X, y)
+    
+    ax1.scatter(X, y, color='blue', alpha=0.5, s=50, label='Actual Data')
+    
+    X_sorted = sorted(X)
+    y_pred = model_full.predict(X_sorted)
+    
+    ax1.plot(X_sorted, y_pred, color='red', linestyle='--', 
+    linewidth=2, label='Regression Line')
+    
+    correlation_full = compute_correlation(X, y)
+    r_squared_full = compute_r_squared(y, model_full.predict(X))
+    
+    stats_text = f'N: {len(X)}\nCorrelation: {correlation_full:.4f}\nR²: {r_squared_full:.4f}'
+    ax1.text(0.05, 0.95, stats_text, transform=ax1.transAxes,
+    bbox=dict(facecolor='white', alpha=0.8),
+    verticalalignment='top')
+    
+    ax1.set_xlabel('Peak Players')
+    ax1.set_ylabel('Hours Played')
+    ax1.set_title('All Games (0-50k peak players)')
+    ax1.grid(True, alpha=0.3)
+    ax1.legend()
+    
+    # 0-10k segment plot
+    X_segment = []
+    y_segment = []
+    for i, x in enumerate(X):
+        if x < 10000:
+            X_segment.append(x)
+            y_segment.append(y[i])
+    
+    model_segment = LinearRegression()
+    model_segment.fit(X_segment, y_segment)
+    
+    ax2.scatter(X_segment, y_segment, color='blue', alpha=0.5, s=50, label='Actual Data')
+    
+    X_sorted_segment = sorted(X_segment)
+    y_pred_segment = model_segment.predict(X_sorted_segment)
+    
+    ax2.plot(X_sorted_segment, y_pred_segment, color='red', linestyle='--', 
+    linewidth=2, label='Regression Line')
+    
+    correlation_segment = compute_correlation(X_segment, y_segment)
+    r_squared_segment = compute_r_squared(y_segment, model_segment.predict(X_segment))
+    
+    stats_text = f'N: {len(X_segment)}\nCorrelation: {correlation_segment:.4f}\nR²: {r_squared_segment:.4f}'
+    ax2.text(0.05, 0.95, stats_text, transform=ax2.transAxes,
+    bbox=dict(facecolor='white', alpha=0.8),
+    verticalalignment='top')
+    
+    ax2.set_xlabel('Peak Players')
+    ax2.set_ylabel('Hours Played')
+    ax2.set_title('Games with 0-10k peak players')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
+    
+    plt.suptitle('Steam Games: Peak Players vs Hours Played - Full Range vs Best Segment', fontsize=14)
+    plt.tight_layout()
+    plt.show()
+def main():
+    try:
+        # Load data
+        with open('-S-team-4/steam_games.json', 'r') as f:
+            data = json.load(f)
+        
+        X = []  # peak_players
+        y = []  # hours_played
+        
+        for game in data:
+            peak_players = game['peak_players']
+            if peak_players < 50000:  # Filter for games with <50k peak players
+                X.append(peak_players)
+                y.append(game['hours_played'])
+        
+        print(f"Loaded {len(X)} games")
+        plot_comparison(X, y)
+        
+    except Exception as e:
+        print(f"An error occurred: {e}")
 if __name__ == "__main__":
     main()
