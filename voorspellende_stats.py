@@ -143,6 +143,8 @@ def main():
     """Laad Steam games data en maak visualisatie van spelersstatistieken."""
     try:
         # Load data
+        # Probeer eerst huidige directory, anders probeer root directory
+        # Dit fikste een probleem tussen 2 leden van onze groep
         try:
             with open('steam_games.json', 'r') as f:
                 data = json.load(f)
