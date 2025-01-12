@@ -1,32 +1,12 @@
-import psycopg2
 import json
 import matplotlib.pyplot as plt
 
-
 class SteamData:
-    def __init__(self, data="-S-team-4/steam.json"):
+    def __init__(self, data="-S-team-4/steam_games.json"):
         self.data = data
         self.games_data = self.laad_json_data()
-        self.positieve_beoordelingen = [game.get("positive_ratings", 0) for game in self.games_data]
-        self.negatieve_beoordelingen = [game.get("negative_ratings", 0) for game in self.games_data]
-        self.prestaties = [game.get("achievements", 0) for game in self.games_data]
-        self.prijzen = [game.get("price", 0) for game in self.games_data]
-        self.speeltijden = [game.get("median_playtime", 0) for game in self.games_data]
-
-    def connect_to_database(self):
-        try:
-            conn = psycopg2.connect(
-                dbname="steam",
-                user="postgres",
-                password="123Welkom123!",
-                host="20.58.44.220",
-                port="5432"
-            )
-            print("Verbonden met de database.")
-            return conn
-        except Exception as e:
-            print(f"Kan geen verbinding maken met de database: {e}")
-            return None
+        self.peak_players = [game.get("peak_players", 0) for game in self.games_data]
+        self.hours_played = [game.get("hours_played", 0) for game in self.games_data]
 
     def laad_json_data(self):
         try:
@@ -60,31 +40,18 @@ class SteamData:
 
     def bereken_statistieken(self):
         return {
-            "Positieve beoordelingen": {
-                "Gemiddelde": self.gemiddelde(self.positieve_beoordelingen),
-                "Mediaan": self.mediaan(self.positieve_beoordelingen),
-                "Standaarddeviatie": self.standaard_deviatie(self.positieve_beoordelingen),
+            "Peak Players": {
+                "Gemiddelde": self.gemiddelde(self.peak_players),
+                "Mediaan": self.mediaan(self.peak_players),
+                "Standaarddeviatie": self.standaard_deviatie(self.peak_players),
             },
-            "Negatieve beoordelingen": {
-                "Gemiddelde": self.gemiddelde(self.negatieve_beoordelingen),
-                "Mediaan": self.mediaan(self.negatieve_beoordelingen),
-                "Standaarddeviatie": self.standaard_deviatie(self.negatieve_beoordelingen),
-            },
-            "Prestaties": {
-                "Gemiddelde": self.gemiddelde(self.prestaties),
-                "Mediaan": self.mediaan(self.prestaties),
-                "Standaarddeviatie": self.standaard_deviatie(self.prestaties),
-            },
-            "Prijzen": {
-                "Gemiddelde": self.gemiddelde(self.prijzen),
-                "Mediaan": self.mediaan(self.prijzen),
-                "Standaarddeviatie": self.standaard_deviatie(self.prijzen),
-            },
-            "Speeltijden": {
-                "Gemiddelde": self.gemiddelde(self.speeltijden),
+            "Hours Played": {
+                "Gemiddelde": self.gemiddelde(self.hours_played),
+                "Mediaan": self.mediaan(self.hours_played),
+                "Standaarddeviatie": self.standaard_deviatie(self.hours_played),
             },
         }
-        
+
     def print_statistieken(self):
         statistieken = self.bereken_statistieken()
         for categorie, statistiek in statistieken.items():
@@ -94,4 +61,5 @@ class SteamData:
             print()
 
 steam_data = SteamData()
+steam_data.print_statistieken()
 
