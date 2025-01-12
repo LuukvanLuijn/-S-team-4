@@ -340,15 +340,7 @@ def ai_statistics_page():
     pred_frame.pack(pady=10, padx=10, fill=ctk.BOTH, expand=True)
 
     # Haal voorspellende statistieken op
-    predictions = main()
-
-    # Toon de resultaten
-    title_label = ctk.CTkLabel(pred_frame, text="Voorspelde Statistieken", font=("bold", 24), text_color="white")
-    title_label.pack(pady=(0, 20))
-
-    for pred_name, pred_value in predictions.items():
-        pred_label = ctk.CTkLabel(pred_frame, text=f"{pred_name}: {pred_value}", text_color="white", font=("Arial", 16), anchor="w", wraplength=800)
-        pred_label.pack(pady=5, padx=10, anchor="w")
+    main()
 
 
 
