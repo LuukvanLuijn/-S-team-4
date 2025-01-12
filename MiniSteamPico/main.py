@@ -111,7 +111,13 @@ r = RotaryIRQ(pin_num_clk=clk,
               range_mode=RotaryIRQ.RANGE_WRAP)
 val_old = r.value()
    
+
+
 def NextWiFi():
+    """
+    Wissel tussen verschillende WiFi-netwerken en stel de SSID en het wachtwoord in.
+    """
+
     global NetworkTry
     global ssid
     global password
@@ -128,6 +134,10 @@ def NextWiFi():
     print(ssid)
     
 def connect():
+    """
+    Maak verbinding met een WiFi-netwerk en probeer opnieuw bij mislukking.
+    """
+
     NextWiFi()
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
@@ -163,6 +173,14 @@ def connect():
 
 
 def sub_callback(topic, msg):
+    """
+    Callback functie voor MQTT berichten.
+    
+    Parameters:
+    topic (bytes): Het MQTT topic.
+    msg (bytes): Het ontvangen bericht.
+    """
+
     global last_SteamID
     global SteamID
     global MessageReceived
@@ -181,6 +199,10 @@ def sub_callback(topic, msg):
     
 
 def MQTTconnect():
+    """
+    Maak verbinding met de MQTT broker en abonneer op het SteamID topic.
+    """
+
     global MessageReceived
     MessageReceived = False
     Loop = True
@@ -240,6 +262,14 @@ def MQTTconnect():
 
 
 def Neopixels(column, mode):
+    """
+    Update de Neopixel strip op basis van de geselecteerde kolom.
+    
+    Parameters:
+    column (int): De geselecteerde kolom.
+    mode (str): De modus van de Neopixel strip.
+    """
+
     strip.fill(black)
     strip.show()
     if column == 0:
@@ -254,6 +284,10 @@ def Neopixels(column, mode):
 
 # Functie voor Actieve user detectie.
 def ActiveUser():
+    """
+    Detecteer actieve gebruikers op basis van bewegingssensor en beheer display slaapmodus.
+    """
+
     global Active, beweging, StartTime, EndTime
     global was_active  # Variabele om de vorige status van Active bij te houden
     AutoOff = 30  # Tijd in seconden voordat hij uitgaat zonder beweging
@@ -279,6 +313,18 @@ def ActiveUser():
 
             
 def Select(Selected, current_row, current_column):
+    """
+    Selecteer een pagina op basis van de huidige rij en kolom.
+    
+    Parameters:
+    Selected (bool): Of er een selectie is gemaakt.
+    current_row (int): De huidige rij.
+    current_column (int): De huidige kolom.
+    
+    Returns:
+    tuple: Geselecteerde status, pagina en rij.
+    """
+
     SelectedPage = PageList[current_column]
     SelectedRow = SelectedPage[current_row]
     print(SelectedPage)
@@ -287,6 +333,10 @@ def Select(Selected, current_row, current_column):
     return Selected, SelectedPage, SelectedRow
 
 def RecentGames():
+    """
+    Haal recent gespeelde games op en toon deze op het display.
+    """
+
     Loop = True
     RecentGameData = requests.get(f"http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key={APIKey}&steamid={SteamID}&format=json")
     print(f"http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key={APIKey}&steamid={SteamID}&format=json")
@@ -318,6 +368,10 @@ def RecentGames():
         print("Het kan dat je recent niks heb gespeeld")
 
 def OwnedGames():
+    """
+    Haal de lijst van bezeten games op en toon de top 9 op het display.
+    """
+    
     gc.collect()
     Loop = True
     OwnedGamesData = requests.get(f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={APIKey}&steamid={SteamID}&include_appinfo=1&format=json")
@@ -358,6 +412,10 @@ def OwnedGames():
         display.fill(bgColor)
 
 def Achievements():
+    """
+    Haal de recent behaalde achievements op voor de top 3 recent gespeelde games.
+    """
+
     Loop = True
     try:
         OwnedGamesData = requests.get(f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={APIKey}&steamid={SteamID}&include_appinfo=1&format=json")
@@ -440,6 +498,10 @@ def Achievements():
                 
 
 def FriendList():
+    """
+    Haal de vriendenlijst op en toon deze op het display.
+    """
+
     try:
         Loop = True
         friendData = requests.get(f'http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key={APIKey}&steamid={SteamID}&relationship=friend')
@@ -471,6 +533,10 @@ def FriendList():
         print(f"Fout bij het ophalen van friend list: {e}")
     
 def FriendsOnline():
+    """
+    Haal de status van vrienden op en toon deze op het display.
+    """
+
     try:
         Loop = True
         friendData = requests.get(f'http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key={APIKey}&steamid={SteamID}&relationship=friend')
@@ -519,6 +585,10 @@ def FriendsOnline():
         print(f"Fout bij het ophalen van status van vrienden: {e}")
 
 def FriendsPlayed():
+    """
+    Haal de recent gespeelde games van vrienden op en toon deze op het display.
+    """
+
     try:
         Loop = True
         friendData = requests.get(f'http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key={APIKey}&steamid={SteamID}&relationship=friend')
@@ -592,6 +662,15 @@ def FriendsPlayed():
             
 
 def PlayerSummary():
+    """
+    Haal de samenvatting van de speler op en toon deze op het display.
+
+    Deze functie haalt de samenvatting van de speler op van de Steam API en toont deze op het scherm.
+
+    Raises:
+        Exception: Als er een fout optreedt bij het ophalen of verwerken van de gegevens.
+    """
+
     try:
         Loop = True
         UserData = requests.get(f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={APIKey}&steamids={SteamID}")
@@ -662,6 +741,16 @@ def PlayerSummary():
 
 
 def Debug():
+    """
+    Toon debug-informatie op het scherm.
+
+    Deze functie toont verschillende debug-informatie zoals Steam ID, MQTT Broker, 
+    encoderstatus en netwerkstatus op het scherm.
+
+    Raises:
+        Exception: Als er een fout optreedt bij het tonen van de debug-informatie.
+    """
+    
     Loop = True  # Zorg ervoor dat Loop lokaal gedefinieerd is
     display.fill(bgColor)
     while Loop:
@@ -705,6 +794,17 @@ def Debug():
 
 
 def ShowPage(Selected, SelectedRow):
+    """
+    Toon de geselecteerde pagina op basis van gebruikersinvoer.
+
+    Args:
+        Selected (bool): Geeft aan of een pagina is geselecteerd.
+        SelectedRow (str): De naam van de geselecteerde rij.
+
+    Returns:
+        bool: Bijgewerkte selectiestatus.
+    """
+
     if Selected == True:
         print(f"Page: {SelectedRow}")
         if SelectedRow == "Recent Games":
@@ -768,14 +868,14 @@ while True:
         val_old = val_new
         print('row =', val_new)
         current_row = val_new
-        display.text(font,"                                        ",10,70,fgColor, bgColor)
+        display.text(font,"                                        ",10,10,fgColor, bgColor)
     if val_old != val_new and mode == "column":
         val_old = val_new
         print('column =', val_new)
         print(PageList[current_column])
         current_column = val_new
         Neopixels(current_column, mode)
-        display.text(font,"                                        ",10,70,fgColor, bgColor)
+        display.text(font,"                                        ",10,10,fgColor, bgColor)
     CRowNormal = current_row + 1
     CColumnNormal = current_column + 1
     
@@ -799,6 +899,3 @@ while True:
     
     # Kleine pauze voor de hoofdlus
     time.sleep(0.1)
-
-
-
