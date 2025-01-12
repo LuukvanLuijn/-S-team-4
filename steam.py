@@ -1,3 +1,6 @@
+"""
+imports & variables & lists
+"""
 import customtkinter as ctk
 import requests, psycopg2, webbrowser, _json, random, time
 from PIL import Image
@@ -5,12 +8,14 @@ from io import BytesIO
 from voorspellende_stats import main
 from paho.mqtt import client as mqtt_client
 
+#title variations maakt een leuke suffix achter de titel
 title_variations = ["Are You Winning?","Level Up Your Game","The Npc's Are Waiting For U", "Unlock New Worlds", "Try Terraria", "Game On", "Let's Play Together", "Get Ready To Play", "Dive Into Action", "Connect With Friends", "Ready Up", "Play, Share, Connect", "Where Gamers Unite", "Just For Fun", "Chill And Play", "Game Time", "Let's Have Some Fun", "Your Next Challenge Awaits", "Rise To The Challenge", "Play Hard, Win Big", "Achieve Your Goals", "The Game Is On", "Discover New Adventures", "Explore The Unknown", "Uncover Hidden Gems", "Your Journey Awaits", "Samuel is brak"]
 root = ctk.CTk()
 root.geometry("900x700")  
 root.title(f"STEAM: {random.choice(title_variations)}")
 root.resizable(False, False)
 
+#veel gebruikte kleuren
 steam_blue = "#1b252e"
 button_blue = "#008cff"
 
@@ -20,9 +25,12 @@ global naam
 global friends
 friends = []
 
+"""
+functions
+"""
 
 
-def imagegrabber(url):
+def imagegrabber(url): #haalt een image op uit een url met de requests en io import
     response = requests.get(url)
     imagedata = response.content
     return Image.open(BytesIO(imagedata))
@@ -42,7 +50,7 @@ def connect_to_database():
         print(f"Kan geen verbinding maken met de database: {e}")        
         return None
 
-def get_steam_games():
+def get_steam_games(): #haalt de top 20 positieve gerate games op uit de database
     conn = connect_to_database()
     if conn is None:
         return []
@@ -56,13 +64,13 @@ def get_steam_games():
         print(f"Kan geen games ophalen: {e}")
         return []
     
-def get_most_played_games():
+def get_most_played_games(): #haalt de top 20 op basis van meeste speeltijd op
     conn = connect_to_database()
     if conn is None:
         return []
     try: 
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM games ORDER BY average_playtime DESC LIMIT 20")  # Adjust the query as needed
+        cursor.execute("SELECT name FROM games ORDER BY average_playtime DESC LIMIT 20")
         most_played_games = cursor.fetchall()
         conn.close()
         return most_played_games
@@ -71,7 +79,7 @@ def get_most_played_games():
         return []
 most_played_games = get_most_played_games()
 
-def get_steam_news():
+def get_steam_news(): #haalt de top 20 positief gerate games op en laat het nieuws ervan zien met een button naar de url van het nieuws
     all_games = get_steam_games()
     all_news = []
     
@@ -80,14 +88,13 @@ def get_steam_news():
         try:
             url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={game_id}&count=5&maxlength=300&format=json"
             response = requests.get(url)
-            print(f"Fetching news for game ID {game_id}: {response.status_code}")  # Debugging line
+            print(f"Fetching news for game ID {game_id}: {response.status_code}")
             
             if response.status_code == 200:
                 data = response.json()
-                # Check if 'appnews' key exists in the response
                 if 'appnews' in data and 'newsitems' in data['appnews']:
                     if data['appnews']['newsitems']:
-                        all_news.extend(data['appnews']['newsitems'])  # Add news items to the list
+                        all_news.extend(data['appnews']['newsitems'])
                     else:
                         print(f"No news items found for game ID {game_id}.")
                 else:
@@ -99,7 +106,7 @@ def get_steam_news():
     
     return all_news
 
-def getimages(id):
+def getimages(id): #haalt de hoofd image van het spel op
     url = f"https://store.steampowered.com/api/appdetails?appids={id}"
     response = requests.get(url)
     data = response.json()
@@ -118,10 +125,10 @@ if games:
         if image_url:
             list_urls.append(image_url)
 
-def donation_button():
+def donation_button(): #knop die naar het armoedefonds verwijst (sdg1)
     webbrowser.open("https://www.armoedefonds.nl/")
 
-def mainpage():
+def mainpage(): #startpagina/dashboard
     for widget in root.winfo_children():
         widget.destroy()
 
@@ -176,9 +183,7 @@ def mainpage():
     for item in news_items:
         if isinstance(item, dict):
             title = item.get('title', 'No Title')
-            news_url = item.get('url', None)  # Assuming 'url' key exists
-
-            # Create a clickable label for the news title
+            news_url = item.get('url', None)
             news_item_label = ctk.CTkButton(left_frame, text=title, text_color="white", command=lambda url=news_url: webbrowser.open(url))
             news_item_label.pack(pady=2, padx=10, anchor="w")
 
@@ -192,10 +197,10 @@ def mainpage():
         most_played_label = ctk.CTkLabel(right_frame, text=game[0], text_color="white")
         most_played_label.pack(pady=2, padx = "10", anchor="w")
 
-def links():
+def links(): #knop naar links
     setImages(list_urls[0], list_urls[1], list_urls[2], list_urls[3])
 
-def rechts():
+def rechts(): #knop naar rechts
     setImages(list_urls[4], list_urls[5], list_urls[6], list_urls[7])
 
 def setImages(image1_text, image2_text, image3_text, image4_text):
@@ -205,7 +210,7 @@ def setImages(image1_text, image2_text, image3_text, image4_text):
     image3.configure(light_image=imagegrabber(image3_text).resize((180, 180)))
     image4.configure(light_image=imagegrabber(image4_text).resize((180, 180)))
 
-def vriendenpage():
+def vriendenpage(): #pagina waar je de vrienden en de status daarvan kan vinden
     for widget in root.winfo_children():
         widget.destroy()
 
@@ -231,39 +236,32 @@ def vriendenpage():
     def loginuser():
         vanity_url = username_entry.get()
         if vanity_url:
-            # Check if the input is a numeric ID
             if vanity_url.isdigit():
-                # If it's a numeric ID, use it directly
                 steam_id = vanity_url
                 print(f"Using numeric Steam ID: {steam_id}")
             else:
-                # If it's not numeric, treat it as a vanity URL
                 api_url = f"https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?key=4BD36C0BE91A8BD89F7A8B730DC93ADC&vanityurl={vanity_url}"
                 response = requests.get(api_url)
-                
-                # Print the raw response text for debugging
                 print(f"Response for vanity URL '{vanity_url}': {response.text}")
                 
-                # Check if the response status code is OK
                 if response.status_code != 200:
                     print(f"Error: Received status code {response.status_code} for vanity URL '{vanity_url}'")
                     return
-                
-                # Try to parse the JSON response
                 try:
                     data = response.json()
                 except ValueError:
                     print("Response is not valid JSON:", response.text)
                     return
                 
-                # Check if the response indicates success
                 if data['response']['success'] == 1:
                     steam_id = data['response']['steamid']
                     print(f"Logged in with Steam ID: {steam_id}")
                 else:
                     print("Failed to log in. Invalid username.")
                     return
-            
+           """
+           api
+           """ 
             apiResponseplayer = requests.get(f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=4BD36C0BE91A8BD89F7A8B730DC93ADC&steamids={steam_id}")
             apiResponsefriends = requests.get(f"http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=4BD36C0BE91A8BD89F7A8B730DC93ADC&steamid={steam_id}&relationship=friend")
             dataplayer = apiResponseplayer.json()
@@ -317,6 +315,9 @@ def vriendenpage():
         lonely_label.pack(pady=(10, 0))
         lonely_label2.pack(pady=2)
 
+"""
+AI
+"""
 def ai_statistics_page():
     for widget in root.winfo_children():
         widget.destroy()
@@ -341,13 +342,10 @@ def ai_statistics_page():
 
     # Haal voorspellende statistieken op
     main()
-    
 
-
-
-
-
-
+"""
+TI
+"""
 broker = 'broker.hivemq.com'
 port = 1883
 topic = "SteamIdSTeam"
