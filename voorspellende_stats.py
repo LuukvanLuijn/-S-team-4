@@ -143,8 +143,12 @@ def main():
     """Laad Steam games data en maak visualisatie van spelersstatistieken."""
     try:
         # Load data
-        with open('steam_games.json', 'r') as f:
-            data = json.load(f)
+        try:
+            with open('steam_games.json', 'r') as f:
+                data = json.load(f)
+        except:
+            with open('-S-team-4/steam_games.json', 'r') as f:
+                data = json.load(f)
         
         X = []  # piek_spelers
         y = []  # gespeelde_uren
